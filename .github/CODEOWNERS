@@ -1,0 +1,13 @@
+# Default owners for everything in the repo.
+*           @KoreaHealthDataPlatform/maintainers
+
+# Keep auth code under tighter review — anything that touches token
+# handling or HTTP request building requires a security-aware reviewer.
+/src/khdp/oauth.py        @KoreaHealthDataPlatform/security
+/src/khdp/token_store.py  @KoreaHealthDataPlatform/security
+/src/khdp/session.py      @KoreaHealthDataPlatform/security
+/src/khdp/mcp_server.py   @KoreaHealthDataPlatform/security
+
+# Wrapper configs are usually safe but should still be reviewed by a
+# wrapper-specific owner before merging.
+/wrappers/                 @KoreaHealthDataPlatform/maintainers

@@ -1,0 +1,12 @@
+{
+  "name": "khdp-connector",
+  "version": "0.1.0",
+  "description": "Korea Health Data Platform OAuth + MCP integration for Gemini CLI.",
+  "mcpServers": {
+    "khdp": {
+      "command": "khdp",
+      "args": ["mcp"]
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

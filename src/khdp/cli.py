@@ -1,0 +1,227 @@
+"""``khdp`` command-line interface.
+
+Subcommands:
+
+* ``khdp login`` -- interactive email + password login against KHDP.
+* ``khdp logout`` -- delete the cached token.
+* ``khdp status`` -- show whether a token is cached.
+* ``khdp refresh`` -- force a refresh-token rotation.
+* ``khdp token`` -- print the current access token (use with care).
+* ``khdp api METHOD PATH`` -- issue an authenticated API call.
+* ``khdp config`` -- show the resolved configuration.
+* ``khdp mcp`` -- start the MCP server on stdio.
+"""
+
+from __future__ import annotations
+
+import argparse
+import getpass
+import json
+import logging
+import os
+import sys
+from collections.abc import Sequence
+
+from khdp import __version__
+from khdp.config import load_config
+from khdp.oauth import AuthError
+from khdp.session import Session
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="khdp",
+        description="KHDP connector -- login + API calls + MCP server.",
+    )
+    parser.add_argument("--version", action="version", version=f"khdp {__version__}")
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0,
+        help="increase logging verbosity (repeat for debug)",
+    )
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_login = sub.add_parser("login", help="log in with email + password")
+    p_login.add_argument("--email", help="account email (else $KHDP_EMAIL or prompt)")
+    p_login.add_argument(
+        "--password-stdin", action="store_true",
+        help="read password from stdin instead of prompting (for scripts)",
+    )
+
+    sub.add_parser("logout", help="delete cached tokens")
+    sub.add_parser("status", help="show cached token state")
+    sub.add_parser("refresh", help="force-refresh the access token")
+
+    p_token = sub.add_parser("token", help="print the current access token")
+    p_token.add_argument("--raw", action="store_true",
+                         help="print only the token value (no JSON envelope)")
+
+    p_api = sub.add_parser("api", help="make an authenticated API call")
+    p_api.add_argument("method", help="HTTP method, e.g. GET / POST")
+    p_api.add_argument("path", help="API path or full URL")
+    p_api.add_argument("--query", action="append", default=[], metavar="KEY=VAL",
+                       help="query parameter (repeatable)")
+    p_api.add_argument("--data", help="JSON body string")
+
+    sub.add_parser("mcp", help="run the KHDP MCP server on stdio")
+    sub.add_parser("config", help="show resolved configuration")
+
+    return parser
+
+
+def _setup_logging(verbose: int) -> None:
+    level = logging.WARNING
+    if verbose == 1:
+        level = logging.INFO
+    elif verbose >= 2:
+        level = logging.DEBUG
+    logging.basicConfig(level=level, format="[khdp] %(levelname)s %(message)s")
+
+
+def _emit(payload: object) -> None:
+    print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+
+
+def _resolve_email(args: argparse.Namespace) -> str:
+    email = args.email or os.environ.get("KHDP_EMAIL")
+    if email:
+        return email
+    if not sys.stdin.isatty():
+        raise SystemExit(
+            "[khdp] no --email given and stdin is not a TTY. "
+            "Set KHDP_EMAIL or pass --email."
+        )
+    return input("KHDP email: ").strip()
+
+
+def _resolve_password(args: argparse.Namespace) -> str:
+    if args.password_stdin:
+        password = sys.stdin.readline().rstrip("\n")
+        if not password:
+            raise SystemExit("[khdp] --password-stdin given but stdin was empty.")
+        return password
+    env = os.environ.get("KHDP_PASSWORD")
+    if env:
+        return env
+    if not sys.stdin.isatty():
+        raise SystemExit(
+            "[khdp] no password available. Use --password-stdin or set KHDP_PASSWORD."
+        )
+    return getpass.getpass("KHDP password: ")
+
+
+def _cmd_login(session: Session, args: argparse.Namespace) -> int:
+    email = _resolve_email(args)
+    password = _resolve_password(args)
+    tokens = session.login(email=email, password=password)
+    _emit({
+        "ok": True,
+        "app_id": tokens.app_id,
+        "expires_at": tokens.expires_at,
+        "has_refresh_token": tokens.refresh_token is not None,
+    })
+    return 0
+
+
+def _cmd_logout(session: Session, _args: argparse.Namespace) -> int:
+    deleted = session.logout()
+    _emit({"ok": True, "deleted": deleted})
+    return 0
+
+
+def _cmd_status(session: Session, _args: argparse.Namespace) -> int:
+    _emit(session.status())
+    return 0
+
+
+def _cmd_refresh(session: Session, _args: argparse.Namespace) -> int:
+    tokens = session.store.load(session.config.app_id or None)
+    if not tokens or not tokens.refresh_token:
+        print("[khdp] no refresh token cached; run `khdp login` first.", file=sys.stderr)
+        return 1
+    refreshed = session.auth.refresh(tokens.refresh_token)
+    if not refreshed.refresh_token:
+        refreshed.refresh_token = tokens.refresh_token
+    if not refreshed.app_id:
+        refreshed.app_id = tokens.app_id or session.config.app_id
+    session.store.save(refreshed)
+    _emit({"ok": True, "expires_at": refreshed.expires_at})
+    return 0
+
+
+def _cmd_token(session: Session, args: argparse.Namespace) -> int:
+    token = session.access_token()
+    if args.raw:
+        print(token)
+    else:
+        _emit({"access_token": token})
+    return 0
+
+
+def _cmd_api(session: Session, args: argparse.Namespace) -> int:
+    params: dict[str, str] = {}
+    for kv in args.query:
+        if "=" not in kv:
+            print(f"[khdp] invalid --query (expected KEY=VAL): {kv}", file=sys.stderr)
+            return 2
+        k, v = kv.split("=", 1)
+        params[k] = v
+    body = json.loads(args.data) if args.data else None
+    resp = session.authed_request(args.method, args.path, params=params or None, json=body)
+    print(f"[khdp] {resp.status_code} {resp.reason_phrase}", file=sys.stderr)
+    try:
+        _emit(resp.json())
+    except ValueError:
+        sys.stdout.write(resp.text)
+    return 0 if resp.is_success else 1
+
+
+def _cmd_mcp(_session: Session, _args: argparse.Namespace) -> int:
+    from khdp.mcp_server import run_stdio
+    run_stdio()
+    return 0
+
+
+def _cmd_config(session: Session, _args: argparse.Namespace) -> int:
+    cfg = session.config
+    _emit({
+        "app_id": cfg.app_id or None,
+        "redirect_url": cfg.redirect_url or None,
+        "api_base": cfg.api_base,
+        "token_dir": str(cfg.token_dir),
+        "use_keyring": cfg.use_keyring,
+    })
+    return 0
+
+
+_DISPATCH = {
+    "login": _cmd_login,
+    "logout": _cmd_logout,
+    "status": _cmd_status,
+    "refresh": _cmd_refresh,
+    "token": _cmd_token,
+    "api": _cmd_api,
+    "mcp": _cmd_mcp,
+    "config": _cmd_config,
+}
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    _setup_logging(args.verbose)
+
+    config = load_config()
+    try:
+        with Session.open(config=config) as session:
+            return _DISPATCH[args.command](session, args)
+    except AuthError as exc:
+        print(f"[khdp] {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("[khdp] interrupted.", file=sys.stderr)
+        return 130
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

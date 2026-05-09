@@ -1,0 +1,23 @@
+# Copy to ./khdp.local.toml in your project root and edit as needed.
+# Anything here overrides the user-level config; environment variables
+# (KHDP_*) override both.
+
+# UUID issued by KHDP at app registration time. Required for any login
+# or token-refresh call. snuh.ai (the public KHDP web app) uses
+# 635e3da0-ec5a-442e-a416-0824fae7a9e2, but each app has its own.
+app_id = ""
+
+# Any URL allowlisted for the app at KHDP registration time. The KHDP
+# backend validates this even on headless password login. For a CLI
+# app you'd register e.g. http://127.0.0.1/khdp-cli or any other
+# placeholder URL with the KHDP team.
+redirect_url = ""
+
+# Override for staging / on-prem KHDP deployments.
+api_base = "https://khdp.net/_api"
+
+# Where to keep tokens. Defaults to the platform user-config dir.
+# token_dir = "~/.config/khdp"
+
+# Use the OS keychain when the optional `keyring` extra is installed.
+use_keyring = true

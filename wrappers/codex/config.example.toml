@@ -1,0 +1,16 @@
+# Drop-in snippet for ~/.codex/config.toml
+#
+# Codex CLI (>= 0.20) reads MCP server definitions from this file under
+# the [mcp_servers.<name>] table. Adjust the command path if `khdp` is
+# not on $PATH.
+
+[mcp_servers.khdp]
+command = "khdp"
+args    = ["mcp"]
+
+# KHDP-registered app credentials. Required by /_api/oauth/login.
+# These get inherited by the MCP server process.
+[mcp_servers.khdp.env]
+KHDP_APP_ID      = "00000000-0000-0000-0000-000000000000"
+KHDP_REDIRECT_URL = "https://example.org/khdp-cli"
+KHDP_API_BASE    = "https://khdp.net/_api"

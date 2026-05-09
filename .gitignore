@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# KHDP runtime artifacts (never commit tokens)
+*.token
+*.tokens.json
+.khdp/
+khdp.local.toml
+
+# Environment
+.env
+.env.local

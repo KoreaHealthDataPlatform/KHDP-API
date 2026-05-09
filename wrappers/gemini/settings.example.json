@@ -1,0 +1,16 @@
+{
+  "_comment": "Drop into ~/.gemini/settings.json (merge with existing keys). Gemini CLI v0.2+ supports MCP servers via the mcpServers block.",
+  "mcpServers": {
+    "khdp": {
+      "command": "khdp",
+      "args": ["mcp"],
+      "env": {
+        "KHDP_APP_ID": "00000000-0000-0000-0000-000000000000",
+        "KHDP_REDIRECT_URL": "https://example.org/khdp-cli",
+        "KHDP_API_BASE": "https://khdp.net/_api"
+      },
+      "trust": false,
+      "timeout": 30000
+    }
+  }
+}
