@@ -40,3 +40,6 @@ khdp.local.toml
 # Environment
 .env
 .env.local
+
+# Claude Code per-user / per-project settings — never commit
+.claude/
