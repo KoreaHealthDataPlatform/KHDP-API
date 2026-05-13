@@ -1,12 +1,8 @@
-"""KHDP Connector — auth + MCP server for the Korea Health Data Platform.
-
-Also ships the **SNUH SuperTable** client (see ``khdp.supertable``) for
-read-only SQL access to FHIR + OMOP CDM clinical-research data.
-"""
+"""KHDP Connector — auth + MCP server for the Korea Health Data Platform."""
 
 # __version__ is defined first so submodules can ``from khdp import
 # __version__`` without a circular import.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from khdp.config import Config, load_config
 from khdp.oauth import AuthError, KhdpAuthClient, OAuthError, TokenSet

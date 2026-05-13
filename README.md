@@ -1,24 +1,23 @@
 # KHDPConnector
 
-Auth + MCP connector for the **Korea Health Data Platform (KHDP)**,
-bundled with the **SNUH SuperTable** SQL client.
+Auth + MCP connector for the **Korea Health Data Platform (KHDP)**.
 
 `khdp` is a CLI-first Python package that:
 
 - handles login against the KHDP central auth API,
-- ships a Python client (`khdp.supertable.Client`) for the SNUH
-  SuperTable SQL gateway over FHIR + OMOP CDM,
-- exposes both surfaces through a single Model Context Protocol (MCP)
-  server (8 tools — 4 KHDP, 4 SuperTable),
+- exposes the authenticated surface through a Model Context Protocol
+  (MCP) server (4 tools),
 - comes with thin wrappers for **Claude Code**, **OpenAI Codex CLI**,
   and **Gemini CLI** so the experience is uniform across coding agents.
 
-See [supertable/](./supertable/) at the repo root for SuperTable
-quickstart, full usage notes, runnable examples, and the Claude Code
-skill file. The Python module is at `src/khdp/supertable/`.
-
 > **Status:** alpha. APIs and tool names may move during Phase 0–1 of
 > the [PLAN.md](./PLAN.md) roadmap.
+>
+> **Note (2026-05):** the previously bundled SNUH SuperTable Python
+> client (`khdp.supertable`) has been removed. SNUH SuperTable is now
+> a plain HTTPS service that exposes its own AGENTS.md and JSON
+> endpoints — any HTTP client (curl, requests, fetch) can use it
+> directly, no library required.
 
 ## How it talks to KHDP
 

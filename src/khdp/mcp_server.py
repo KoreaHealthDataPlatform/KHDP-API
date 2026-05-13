@@ -27,8 +27,6 @@ from typing import Any
 
 from khdp.oauth import AuthError
 from khdp.session import Session
-from khdp.supertable import mcp_tools as _supertable_tools
-from khdp.supertable.exceptions import SupertableError
 
 log = logging.getLogger(__name__)
 
@@ -113,11 +111,6 @@ _TOOLS: list[dict[str, Any]] = [
     },
 ]
 
-# SuperTable tools are defined in khdp.supertable.mcp_tools and merged in
-# at module-load time so the MCP server advertises the full surface.
-_TOOLS.extend(_supertable_tools.TOOLS)
-
-
 def _result_text(payload: object) -> dict[str, Any]:
     return {
         "content": [
@@ -168,13 +161,9 @@ def _dispatch(session: Session, name: str, arguments: dict[str, Any]) -> dict[st
                 "reason": resp.reason_phrase,
                 "body": data,
             })
-        if _supertable_tools.is_supertable_tool(name):
-            return _result_text(_supertable_tools.dispatch(name, arguments))
         return _error_text(f"Unknown tool: {name}")
     except AuthError as exc:
         return _error_text(str(exc))
-    except SupertableError as exc:
-        return _error_text(f"{type(exc).__name__}: {exc}")
     except Exception as exc:
         log.exception("Tool %s failed", name)
         return _error_text(f"{type(exc).__name__}: {exc}")

@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "khdp"
-version = "0.2.0"
-description = "KHDP connector + SNUH SuperTable client. CLI + MCP server for the Korea Health Data Platform and the SNUH SuperTable SQL gateway, with wrappers for Claude Code, OpenAI Codex, and Gemini."
+version = "0.3.0"
+description = "KHDP connector. CLI + MCP server for the Korea Health Data Platform with wrappers for Claude Code, OpenAI Codex, and Gemini."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Korea Health Data Platform", email = "vital@snu.ac.kr" },
 ]
-keywords = ["khdp", "oauth", "mcp", "healthcare", "omop", "fhir", "supertable", "snuh", "vitaldb"]
+keywords = ["khdp", "oauth", "mcp", "healthcare", "vitaldb"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Healthcare Industry",
