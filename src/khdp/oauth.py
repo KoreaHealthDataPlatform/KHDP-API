@@ -6,7 +6,7 @@ applications such as this CLI.
 
 Endpoints used:
 
-* ``GET  <authorize_url>?appId=...&redirectUrl=...&codeChallenge=...&codeChallengeMethod=S256&state=...``
+* ``GET <authorize_url>?appId&redirectUrl&codeChallenge&codeChallengeMethod=S256&state``
   -- the user's browser is sent here. KHDP's web UI handles login and
   consent, then redirects to the loopback ``redirectUrl`` with
   ``?code=...&state=...``.
@@ -34,7 +34,7 @@ import urllib.parse
 import webbrowser
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -149,9 +149,9 @@ def _generate_state() -> str:
 class _LoopbackCallbackHandler(http.server.BaseHTTPRequestHandler):
     """One-shot HTTP handler that captures the redirect's query string."""
 
-    received: dict[str, str] = {}
+    received: ClassVar[dict[str, str]] = {}
 
-    def do_GET(self) -> None:  # noqa: N802  (stdlib name)
+    def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         params = dict(urllib.parse.parse_qsl(parsed.query))
         type(self).received = params
@@ -166,7 +166,7 @@ class _LoopbackCallbackHandler(http.server.BaseHTTPRequestHandler):
         )
         self.wfile.write(body.encode())
 
-    def log_message(self, *_args: Any) -> None:  # noqa: N802  (silence access log)
+    def log_message(self, *_args: Any) -> None:
         return
 
 
@@ -297,13 +297,13 @@ class KhdpAuthClient:
         log.info("Opening browser for KHDP login: %s", authorize_url)
         try:
             open_browser(authorize_url)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             server.server_close()
             raise AuthError(f"failed to open browser: {exc}") from exc
 
         # 3) 콜백 도착 대기.
         params = _wait_for_callback(server, timeout=callback_timeout)
-        
+
         returned_state = params.get("state")
         if returned_state is None:
             log.warning(
