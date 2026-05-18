@@ -68,6 +68,15 @@ def add_subparser(sub: argparse._SubParsersAction) -> None:
     p_dl.add_argument(
         "--out", default=".", help="output directory (default: current dir)",
     )
+    p_dl.add_argument(
+        "--max-pages", type=int, default=0,
+        help="stop after N pages of links (default: 0 = all). Server "
+             "returns up to 1000 files per page.",
+    )
+    p_dl.add_argument(
+        "--dry-run", action="store_true",
+        help="list keys/sizes only, don't fetch file contents",
+    )
     p_dl.set_defaults(func=_cmd_download)
 
 
@@ -221,14 +230,28 @@ def _cmd_download_link(session: Session, args: argparse.Namespace) -> int:
     return 0
 
 
+def _fmt_size(n: int) -> str:
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 ** 2:
+        return f"{n / 1024:.1f} KB"
+    if n < 1024 ** 3:
+        return f"{n / 1024 ** 2:.1f} MB"
+    return f"{n / 1024 ** 3:.2f} GB"
+
+
 def _cmd_download(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
     out_dir = Path(args.out).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
+    if not args.dry_run:
+        out_dir.mkdir(parents=True, exist_ok=True)
 
     cont: str | None = None
-    total = 0
+    page = 0
+    cum_files = 0       # files fetched / listed so far across all pages
+    cum_bytes = 0       # bytes fetched / listed so far across all pages
     while True:
+        page += 1
         params: dict[str, str] = {}
         if cont:
             params["continueToken"] = cont
@@ -243,23 +266,61 @@ def _cmd_download(session: Session, args: argparse.Namespace) -> int:
         items = body.get("items") if isinstance(body, dict) else None
         if not items:
             break
-        for it in items:
+        page_count = len(items)
+        page_bytes = sum(int(it.get("size") or 0) for it in items)
+        print(
+            f"[khdp] page {page}: {page_count} file(s), {_fmt_size(page_bytes)}",
+            file=sys.stderr,
+        )
+        for i, it in enumerate(items, start=1):
             key = it.get("key")
             url = it.get("url") or it.get("downloadUrl")
             if not key or not url:
                 continue
+            size = int(it.get("size") or 0)
+            if args.dry_run:
+                print(f"  · {key}  ({_fmt_size(size)})")
+                cum_files += 1
+                cum_bytes += size
+                continue
             target = out_dir / key
             target.parent.mkdir(parents=True, exist_ok=True)
-            print(f"  → {key}", file=sys.stderr)
+            print(
+                f"  [{i:>4}/{page_count}] {key}  ({_fmt_size(size)})",
+                file=sys.stderr,
+            )
             with httpx.stream("GET", url, timeout=300.0) as r:
                 r.raise_for_status()
                 with target.open("wb") as fh:
                     for chunk in r.iter_bytes(chunk_size=64 * 1024):
                         fh.write(chunk)
-            total += 1
+            cum_files += 1
+            cum_bytes += size
+        print(
+            f"[khdp] page {page} done. cumulative: "
+            f"{cum_files} file(s), {_fmt_size(cum_bytes)}",
+            file=sys.stderr,
+        )
         cont = body.get("continueToken")
         if not cont:
             break
+        if args.max_pages and page >= args.max_pages:
+            print(
+                f"[khdp] reached --max-pages={args.max_pages}, stopping",
+                file=sys.stderr,
+            )
+            break
 
-    print(f"[khdp] downloaded {total} file(s) to {out_dir}", file=sys.stderr)
+    if args.dry_run:
+        print(
+            f"[khdp] dry-run: {page} page(s), "
+            f"{cum_files} file(s), {_fmt_size(cum_bytes)} total",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"[khdp] downloaded {cum_files} file(s), "
+            f"{_fmt_size(cum_bytes)} → {out_dir}",
+            file=sys.stderr,
+        )
     return 0
