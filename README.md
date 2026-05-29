@@ -101,6 +101,22 @@ khdp config         # print resolved configuration
 khdp mcp            # run the MCP server on stdio (for agents)
 ```
 
+### Personal Access Token (PAT)
+
+PAT 는 KHDP 웹 콘솔에서 발급한 사용자 토큰 (`khdp_pat_...`). PAT 가
+설정되어 있으면 PKCE OAuth 보다 우선해 모든 API 호출에 사용된다.
+
+```bash
+khdp pat set <khdp_pat_xxxx>   # 로컬 keyring/파일에 저장
+khdp pat status                # env / store 보유 여부 + prefix 표시
+khdp pat clear                 # store 에서 삭제 (env 는 그대로)
+
+# 또는 env 로 일회성 주입 (가장 우선)
+KHDP_PAT=khdp_pat_xxxx khdp api GET /open/projects
+```
+
+해석 우선순위: `KHDP_PAT` env → store 에 저장된 PAT → PKCE OAuth 토큰.
+
 ### Datasets
 ```bash
 khdp datasets list [--query KW] [--policy open|restricted|...] [--page N] [--limit N] [--json]

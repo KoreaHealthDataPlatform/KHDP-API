@@ -26,6 +26,7 @@ from khdp.oauth import TokenSet
 log = logging.getLogger(__name__)
 
 _KEYRING_SERVICE = "khdp"
+_PAT_KEY = "__pat__"
 
 
 def _restrict_permissions(path: Path) -> None:
@@ -107,7 +108,54 @@ class TokenStore:
         return deleted
 
     def list_apps(self) -> list[str]:
-        return sorted(self._read_file().keys())
+        return sorted(k for k in self._read_file().keys() if k != _PAT_KEY)
+
+    # -- PAT (Personal Access Token) -------------------------------------
+
+    def save_pat(self, token: str) -> None:
+        """Persist a PAT (khdp_pat_*) for the current user."""
+        if self._keyring is not None:
+            try:
+                self._keyring.set_password(_KEYRING_SERVICE, _PAT_KEY, token)
+                # Mark presence in the index file (no secret on disk).
+                data = self._read_file()
+                data[_PAT_KEY] = {"_in_keyring": True}
+                self._write_file_raw(data)
+                return
+            except Exception as exc:  # pragma: no cover
+                log.warning("Keyring write failed for PAT (%s); falling back to file.", exc)
+        data = self._read_file()
+        data[_PAT_KEY] = {"token": token}
+        self._write_file_raw(data)
+
+    def load_pat(self) -> str | None:
+        if self._keyring is not None:
+            try:
+                raw = self._keyring.get_password(_KEYRING_SERVICE, _PAT_KEY)
+            except Exception:  # pragma: no cover
+                raw = None
+            if raw:
+                return raw
+        entry = self._read_file().get(_PAT_KEY)
+        if not isinstance(entry, dict):
+            return None
+        token = entry.get("token")
+        return token if isinstance(token, str) and token else None
+
+    def delete_pat(self) -> bool:
+        deleted = False
+        if self._keyring is not None:
+            try:
+                self._keyring.delete_password(_KEYRING_SERVICE, _PAT_KEY)
+                deleted = True
+            except Exception:  # pragma: no cover
+                pass
+        data = self._read_file()
+        if _PAT_KEY in data:
+            del data[_PAT_KEY]
+            self._write_file_raw(data)
+            deleted = True
+        return deleted
 
     # -- internals --------------------------------------------------------
 

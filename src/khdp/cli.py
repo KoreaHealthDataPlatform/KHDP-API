@@ -7,6 +7,9 @@ Subcommand groups:
 * ``khdp status``      -- show whether a token is cached.
 * ``khdp refresh``     -- force a refresh-token rotation.
 * ``khdp token``       -- print the current access token (use with care).
+* ``khdp pat set/status/clear`` -- manage a Personal Access Token
+  (issued from the KHDP web console). PAT takes precedence over OAuth
+  when both are present. Also recognised via the ``KHDP_PAT`` env var.
 * ``khdp datasets ...`` -- public dataset operations (list / show / files /
   download-link / download).
 * ``khdp submissions ...`` -- own dataset submission operations.
@@ -20,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from collections.abc import Sequence
 
@@ -27,6 +31,9 @@ from khdp import __version__, cli_datasets, cli_submissions
 from khdp.config import load_config
 from khdp.oauth import AuthError
 from khdp.session import Session
+
+_PAT_PREFIX = "khdp_pat_"
+_PAT_ENV = "KHDP_PAT"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -62,6 +69,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="print only the token value (no JSON envelope)",
     )
     p_token.set_defaults(func=_cmd_token)
+
+    # ── PAT (Personal Access Token) ──────────────────────────────────
+    p_pat = sub.add_parser(
+        "pat",
+        help="manage a Personal Access Token (PAT takes precedence over OAuth)",
+    )
+    pat_sub = p_pat.add_subparsers(dest="pat_command", required=True)
+
+    p_pat_set = pat_sub.add_parser(
+        "set", help=f"store a PAT (must start with '{_PAT_PREFIX}')",
+    )
+    p_pat_set.add_argument("token", help="PAT value")
+    p_pat_set.set_defaults(func=_cmd_pat_set)
+
+    pat_sub.add_parser(
+        "status", help="show stored / env PAT prefix",
+    ).set_defaults(func=_cmd_pat_status)
+
+    pat_sub.add_parser(
+        "clear", help="delete the stored PAT (env is left untouched)",
+    ).set_defaults(func=_cmd_pat_clear)
 
     # ── domain commands ───────────────────────────────────────────────
     cli_datasets.add_subparser(sub)
@@ -142,6 +170,41 @@ def _cmd_token(session: Session, args: argparse.Namespace) -> int:
         print(token)
     else:
         _emit({"access_token": token})
+    return 0
+
+
+def _cmd_pat_set(session: Session, args: argparse.Namespace) -> int:
+    token = args.token.strip()
+    if not token.startswith(_PAT_PREFIX):
+        print(
+            f"[khdp] PAT must start with '{_PAT_PREFIX}'. Got: {token[:10]}...",
+            file=sys.stderr,
+        )
+        return 2
+    session.store.save_pat(token)
+    _emit({"ok": True, "stored": True, "prefix": token[:14]})
+    return 0
+
+
+def _cmd_pat_status(session: Session, _args: argparse.Namespace) -> int:
+    env_pat = os.environ.get(_PAT_ENV)
+    stored = session.store.load_pat()
+    active_source: str | None = None
+    if env_pat:
+        active_source = "env"
+    elif stored:
+        active_source = "store"
+    _emit({
+        "env": {"set": bool(env_pat), "prefix": env_pat[:14] if env_pat else None},
+        "store": {"set": bool(stored), "prefix": stored[:14] if stored else None},
+        "active_source": active_source,
+    })
+    return 0
+
+
+def _cmd_pat_clear(session: Session, _args: argparse.Namespace) -> int:
+    deleted = session.store.delete_pat()
+    _emit({"ok": True, "deleted_from_store": deleted})
     return 0
 
 

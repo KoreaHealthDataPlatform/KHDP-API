@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +17,20 @@ from khdp.oauth import AuthError, KhdpAuthClient, TokenSet
 from khdp.token_store import TokenStore
 
 log = logging.getLogger(__name__)
+
+_PAT_ENV = "KHDP_PAT"
+_PAT_PREFIX = "khdp_pat_"
+
+
+def _resolve_pat(store: TokenStore) -> tuple[str | None, str | None]:
+    """Return (token, source) — source is 'env' / 'store' / None."""
+    env_pat = os.environ.get(_PAT_ENV)
+    if env_pat:
+        return env_pat, "env"
+    stored = store.load_pat()
+    if stored:
+        return stored, "store"
+    return None, None
 
 
 @dataclass
@@ -67,29 +82,45 @@ class Session:
         return self.store.delete(self.config.app_id or None)
 
     def status(self) -> dict[str, Any]:
+        pat, pat_source = _resolve_pat(self.store)
+        pat_info: dict[str, Any] | None = None
+        if pat:
+            pat_info = {"source": pat_source, "prefix": pat[:14]}
+
         tokens = self.store.load(self.config.app_id or None)
         if not tokens:
             return {
-                "authenticated": False,
+                "authenticated": pat is not None,
+                "auth_mode": "pat" if pat else None,
                 "app_id": self.config.app_id or None,
+                "pat": pat_info,
             }
         return {
             "authenticated": True,
+            "auth_mode": "pat" if pat else "oauth",
             "app_id": tokens.app_id or self.config.app_id,
             "expires_at": tokens.expires_at,
             "is_expired": tokens.is_expired,
             "has_refresh_token": tokens.refresh_token is not None,
+            "pat": pat_info,
         }
 
     def access_token(self) -> str:
-        """Return a valid access token, refreshing if necessary.
+        """Return a valid access token (PAT 우선, 없으면 OAuth).
 
-        Raises :class:`AuthError` if the user has never logged in or the
-        refresh token has been revoked.
+        Raises :class:`AuthError` if neither a PAT nor a valid OAuth
+        token is available.
         """
+        # PAT 우선 — 만료/refresh 개념 없음. 그대로 반환.
+        pat, _ = _resolve_pat(self.store)
+        if pat:
+            return pat
+
         tokens = self.store.load(self.config.app_id or None)
         if tokens is None:
-            raise AuthError("Not logged in. Run `khdp login` first.")
+            raise AuthError(
+                "Not authenticated. Run `khdp login` or `khdp pat set <token>`."
+            )
         if not tokens.is_expired:
             return tokens.access_token
         if not tokens.refresh_token:

@@ -22,6 +22,15 @@ and uses [Semantic Versioning](https://semver.org/).
   their own handlers; the previous `_DISPATCH` dict is gone.
 
 ### Added
+- **PAT (Personal Access Token) support** — register a token issued
+  from the KHDP web console (`khdp_pat_*`) and use it instead of the
+  PKCE OAuth tokens.
+  - `khdp pat set <token>` / `khdp pat status` / `khdp pat clear`
+    (keyring + file fallback).
+  - `KHDP_PAT` env variable; precedence: `env` → store → OAuth.
+  - PAT 가 있으면 `Session.access_token()` 이 PAT 를 그대로 반환
+    (refresh / expiry 처리 없음 — PAT 자체가 장기 토큰).
+  - `khdp status` / `khdp pat status` 에 현재 활성 인증 모드 표시.
 - `khdp datasets` subcommand group:
   - `list`, `show`, `files`, `download-link`, `download`.
   - Ref form `<code>[@<version>]`; `<code>` alone defaults to `@latest`.
