@@ -105,6 +105,16 @@ _TOOLS: list[dict[str, Any]] = [
                 "json": {
                     "description": "JSON body for POST/PUT/PATCH.",
                 },
+                "auth": {
+                    "type": "string",
+                    "enum": ["auto", "bearer", "app_key", "api_key"],
+                    "description": (
+                        "Credential to use. 'auto' (default) prefers the "
+                        "logged-in user token, else App Key, else API key. "
+                        "'app_key' sends X-App-Id / X-App-Secret; 'api_key' "
+                        "sends X-API-Key; 'bearer' forces the user token."
+                    ),
+                },
             },
             "additionalProperties": False,
         },
@@ -151,7 +161,8 @@ def _dispatch(session: Session, name: str, arguments: dict[str, Any]) -> dict[st
             path = arguments["path"]
             query = arguments.get("query") or None
             body = arguments.get("json")
-            resp = session.authed_request(method, path, params=query, json=body)
+            auth = arguments.get("auth") or "auto"
+            resp = session.authed_request(method, path, params=query, json=body, auth=auth)
             try:
                 data: object = resp.json()
             except ValueError:

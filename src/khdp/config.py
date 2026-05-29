@@ -48,6 +48,14 @@ class Config:
     # KHDP web URL the user's browser is sent to during PKCE login.
     # If empty, derived from ``api_base`` host (path = /external/oauth-login).
     authorize_url: str = ""
+    # App Key secret. Paired with ``app_id`` it authenticates as the app
+    # itself (``X-App-Id`` / ``X-App-Secret``) for headless access to
+    # public datasets -- no user login required.
+    app_secret: str = ""
+    # Personal API key sent as ``X-API-Key``. KHDP's self-service
+    # issuance backend is not live yet; the connector only forwards
+    # whatever value is configured here.
+    api_key: str = ""
     # Where tokens go on disk. Defaults to platform user-config dir.
     token_dir: Path = field(default_factory=lambda: Path(user_config_dir("khdp")))
     # Use OS keychain via the optional ``keyring`` extra when available.
@@ -77,6 +85,8 @@ def _env_overrides() -> dict[str, Any]:
         "redirect_url": "KHDP_REDIRECT_URL",
         "api_base": "KHDP_API_BASE",
         "authorize_url": "KHDP_AUTHORIZE_URL",
+        "app_secret": "KHDP_APP_SECRET",
+        "api_key": "KHDP_API_KEY",
     }
     out: dict[str, Any] = {}
     for key, env in mapping.items():
