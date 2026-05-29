@@ -31,6 +31,14 @@ else:  # pragma: no cover
 # KHDP central API base — observed at https://khdp.net/_api.
 DEFAULT_API_BASE = "https://khdp.net/_api"
 
+# 브라우저가 PKCE 로그인 시 방문하는 KHDP 웹 URL.
+DEFAULT_AUTHORIZE_URL = "https://khdp.net/external/oauth-login"
+
+# KHDP-registered "khdp CLI" public app. PKCE 라 client_secret 는 없음.
+# 사용자가 KHDP_APP_ID env / khdp.local.toml 로 본인 app 을 지정하지 않으면
+# 이 공식 CLI app 으로 PKCE 로그인 한다.
+DEFAULT_CLI_APP_ID = "d915a48e-18ba-4f53-8b15-c17c1a34203f"
+
 
 @dataclass(frozen=True)
 class Config:
@@ -41,13 +49,13 @@ class Config:
     # app; for the PKCE Loopback flow the CLI uses
     # ``http://127.0.0.1:<dynamic-port>/callback`` and the KHDP backend
     # matches IP-literal loopbacks ignoring port (RFC 8252 §7.3).
-    app_id: str = ""
+    app_id: str = DEFAULT_CLI_APP_ID
     redirect_url: str = ""
     # KHDP API base. Override for staging / on-prem deployments.
     api_base: str = DEFAULT_API_BASE
     # KHDP web URL the user's browser is sent to during PKCE login.
-    # If empty, derived from ``api_base`` host (path = /external/oauth-login).
-    authorize_url: str = ""
+    # Default points at production KHDP; override for staging / on-prem.
+    authorize_url: str = DEFAULT_AUTHORIZE_URL
     # Where tokens go on disk. Defaults to platform user-config dir.
     token_dir: Path = field(default_factory=lambda: Path(user_config_dir("khdp")))
     # Use OS keychain via the optional ``keyring`` extra when available.

@@ -68,26 +68,33 @@ pipx install 'khdp[keyring]'
 
 ## One-time configuration
 
-You need a KHDP-registered `app_id` (UUID). The CLI uses a loopback
-redirect (`http://127.0.0.1:<port>/callback`) -- the KHDP backend
-matches IP-literal loopbacks ignoring port, so a single registered
-loopback entry on the app is enough.
+기본값으로 KHDP 공식 CLI app 이 박혀 있어 추가 설정 없이 바로
+`khdp login` 가능합니다.
+
+| 항목 | 기본값 |
+|---|---|
+| `app_id` | `d915a48e-18ba-4f53-8b15-c17c1a34203f` (KHDP-registered CLI app) |
+| `api_base` | `https://khdp.net/_api` |
+| `authorize_url` | `https://khdp.net/external/oauth-login` |
+
+본인이 따로 등록한 app 으로 쓰거나 staging/on-prem 환경을 가리키려면
+env 또는 `./khdp.local.toml` 로 덮어쓰면 됩니다.
+
+```bash
+export KHDP_APP_ID="..."
+export KHDP_API_BASE="https://stage.khdp.net/_api"
+export KHDP_AUTHORIZE_URL="https://stage.khdp.net/external/oauth-login"
+```
 
 ```toml
 # ./khdp.local.toml
-app_id   = "00000000-0000-0000-0000-000000000000"
-api_base = "https://khdp.net/_api"  # default; override for staging
+app_id        = "..."
+api_base      = "https://stage.khdp.net/_api"
+authorize_url = "https://stage.khdp.net/external/oauth-login"
 ```
 
-…or:
-
-```bash
-export KHDP_APP_ID=00000000-0000-0000-0000-000000000000
-```
-
-> **Don't have an `app_id` yet?** Coordinate with the KHDP team to
-> register a CLI-class app with `http://127.0.0.1:*/callback` listed
-> as an allowed redirect URL.
+> 본인 app 을 등록하는 경우 `http://127.0.0.1:*/callback` 을 allowed
+> redirect URL 로 추가해야 PKCE 로그인이 동작합니다.
 
 ## CLI usage
 

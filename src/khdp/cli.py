@@ -344,6 +344,7 @@ def _cmd_config(session: Session, _args: argparse.Namespace) -> int:
     _emit({
         "app_id": cfg.app_id or None,
         "api_base": cfg.api_base,
+        "authorize_url": cfg.authorize_url or None,
         "token_dir": str(cfg.token_dir),
     })
     return 0
