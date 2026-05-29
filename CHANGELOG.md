@@ -7,15 +7,15 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
+## [0.3.0] - 2026-05-29
+
+### Added (0.3.0 추가분 — PAT + 공식 CLI app 내장)
 - **공식 KHDP CLI app 기본 내장** — `Config.app_id` 와 `authorize_url`
   의 디폴트로 KHDP-registered `d915a48e-...c1a34203f` (PKCE 공개 app)
   과 `https://khdp.net/external/oauth-login` 가 박혀 있어 추가 설정
   없이 바로 `khdp login` 가능. 본인 app / staging 은 env (`KHDP_APP_ID`,
   `KHDP_AUTHORIZE_URL`) 또는 `khdp.local.toml` 로 override.
 - `khdp config` 출력에 `authorize_url` 포함.
-
-## [0.3.0] - 2026-05-29
 
 ### Changed
 - **Login is now OAuth 2.0 Authorization Code with PKCE** (RFC 7636)
