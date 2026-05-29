@@ -31,6 +31,15 @@ and uses [Semantic Versioning](https://semver.org/).
   - PAT 가 있으면 `Session.access_token()` 이 PAT 를 그대로 반환
     (refresh / expiry 처리 없음 — PAT 자체가 장기 토큰).
   - `khdp status` / `khdp pat status` 에 현재 활성 인증 모드 표시.
+- **`khdp pat new`** — OAuth 로그인 한 상태에서 `POST /oauth/api-tokens`
+  를 호출해 PAT 를 발급 + 즉시 keyring/파일에 저장한다.
+  - 옵션: `--name` / `--scopes <s>` (반복) / `--expires-in-days N`.
+  - scope 생략 시 super-PAT (모든 권한 통과) 로 발급.
+  - 1인 1 PAT 정책 — 기존 active 가 있으면 서버가 409 + existingPrefix
+    응답. CLI 가 prefix 안내 후 confirm 받는다.
+  - `--force` 는 처음부터 `?force=true` 로 호출, `--yes` 는 409
+    prompt 자동 승인.
+  - `Session.oauth_access_token()` (PAT 무시, OAuth 토큰만) 추가.
 - `khdp datasets` subcommand group:
   - `list`, `show`, `files`, `download-link`, `download`.
   - Ref form `<code>[@<version>]`; `<code>` alone defaults to `@latest`.

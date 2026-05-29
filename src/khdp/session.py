@@ -111,11 +111,17 @@ class Session:
         Raises :class:`AuthError` if neither a PAT nor a valid OAuth
         token is available.
         """
-        # PAT 우선 — 만료/refresh 개념 없음. 그대로 반환.
         pat, _ = _resolve_pat(self.store)
         if pat:
             return pat
+        return self.oauth_access_token()
 
+    def oauth_access_token(self) -> str:
+        """PAT 와 무관하게 OAuth access token 만 반환 (refresh 자동).
+
+        PAT 발급 (POST /oauth/api-tokens) 처럼 OAuth 토큰이 명시적으로
+        필요한 흐름에서 사용한다.
+        """
         tokens = self.store.load(self.config.app_id or None)
         if tokens is None:
             raise AuthError(

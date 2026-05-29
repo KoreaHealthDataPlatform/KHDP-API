@@ -111,11 +111,22 @@ khdp pat set <khdp_pat_xxxx>   # 로컬 keyring/파일에 저장
 khdp pat status                # env / store 보유 여부 + prefix 표시
 khdp pat clear                 # store 에서 삭제 (env 는 그대로)
 
+# OAuth 로그인 한 다음 CLI 에서 직접 발급 + 자동 저장
+khdp login
+khdp pat new                                    # super-PAT (모든 권한)
+khdp pat new --name ci --scopes project:access  # 특정 scope
+khdp pat new --force                            # 기존 active PAT 자동 revoke
+khdp pat new --yes                              # 409 충돌 시 prompt 없이 교체
+
 # 또는 env 로 일회성 주입 (가장 우선)
 KHDP_PAT=khdp_pat_xxxx khdp api GET /open/projects
 ```
 
 해석 우선순위: `KHDP_PAT` env → store 에 저장된 PAT → PKCE OAuth 토큰.
+
+1인 1 PAT 정책: 동일 사용자는 active PAT 를 하나만 보유한다. `khdp pat new`
+가 기존 토큰을 발견하면 prefix 를 안내하고 confirm 받는다 (`--yes` /
+`--force` 로 자동화 가능).
 
 ### Datasets
 ```bash
