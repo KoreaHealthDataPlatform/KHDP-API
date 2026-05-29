@@ -108,7 +108,7 @@ class TokenStore:
         return deleted
 
     def list_apps(self) -> list[str]:
-        return sorted(k for k in self._read_file().keys() if k != _PAT_KEY)
+        return sorted(k for k in self._read_file() if k != _PAT_KEY)
 
     # -- PAT (Personal Access Token) -------------------------------------
 
