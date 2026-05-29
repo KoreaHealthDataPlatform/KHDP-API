@@ -44,7 +44,7 @@ All subsequent KHDP API calls go out with `Authorization: Bearer
 │        │              │              │                      │
 │        └──────── MCP (stdio JSON-RPC) ───────┐             │
 │                                              ▼             │
-│                                    khdp-connector (this)   │
+│                                    khdp (this)             │
 │                                              │             │
 │   khdp login (PKCE / browser)                │             │
 │                                              ▼             │
@@ -57,12 +57,14 @@ All subsequent KHDP API calls go out with `Authorization: Bearer
 ## Install
 
 ```bash
-pipx install khdp-connector            # recommended; isolates from system Python
+pipx install khdp            # recommended; isolates from system Python
 # or
-pip install khdp-connector
+pip install khdp
 # or with OS-keychain support:
-pipx install 'khdp-connector[keyring]'
+pipx install 'khdp[keyring]'
 ```
+
+> PyPI 패키지 이름은 [`khdp`](https://pypi.org/project/khdp/) 입니다. 설치되는 CLI 명령 (`khdp`, `khdp-mcp`) 도 동일.
 
 ## One-time configuration
 

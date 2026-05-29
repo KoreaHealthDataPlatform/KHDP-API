@@ -7,6 +7,8 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-29
+
 ### Changed
 - **Login is now OAuth 2.0 Authorization Code with PKCE** (RFC 7636)
   using a loopback redirect (RFC 8252 §7.3). The previous
