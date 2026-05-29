@@ -4,7 +4,6 @@ transparently."""
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -105,6 +104,50 @@ class Session:
         self.store.save(refreshed)
         return refreshed.access_token
 
+    def _resolve_auth(self, auth: str) -> str:
+        """Decide which credential to use for an outgoing request.
+
+        ``auto`` prefers a cached user token (Bearer); with none available
+        it falls back to App Key, then to a personal API key.
+        """
+        if auth in ("bearer", "app_key", "api_key"):
+            return auth
+        if auth != "auto":
+            raise ValueError(f"unknown auth mode: {auth!r}")
+        if self.store.load(self.config.app_id or None) is not None:
+            return "bearer"
+        if self.config.app_id and self.config.app_secret:
+            return "app_key"
+        if self.config.api_key:
+            return "api_key"
+        return "bearer"
+
+    def _auth_headers(self, mode: str, *, require_auth: bool) -> dict[str, str]:
+        if mode == "app_key":
+            if not (self.config.app_id and self.config.app_secret):
+                raise AuthError(
+                    "App Key auth requires app_id + app_secret "
+                    "(set KHDP_APP_ID and KHDP_APP_SECRET)."
+                )
+            return {
+                "X-App-Id": self.config.app_id,
+                "X-App-Secret": self.config.app_secret,
+            }
+        if mode == "api_key":
+            if not self.config.api_key:
+                raise AuthError(
+                    "API key auth requires api_key (set KHDP_API_KEY)."
+                )
+            return {"X-API-Key": self.config.api_key}
+        # bearer
+        if require_auth:
+            return {"Authorization": f"Bearer {self.access_token()}"}
+        # Anonymous fall-through: attach a token if one is cached.
+        try:
+            return {"Authorization": f"Bearer {self.access_token()}"}
+        except AuthError:
+            return {}
+
     def authed_request(
         self,
         method: str,
@@ -112,13 +155,17 @@ class Session:
         *,
         params: dict[str, Any] | None = None,
         json: Any = None,
+        auth: str = "auto",
     ) -> httpx.Response:
         """Issue an authenticated request against the KHDP API base.
 
-        Raises :class:`AuthError` if the user is not logged in.
-        ``path`` may be a full URL or a path relative to ``config.api_base``.
+        ``auth`` selects the credential: ``auto`` (default), ``bearer``
+        (the logged-in user token), ``app_key`` (``X-App-Id`` /
+        ``X-App-Secret``), or ``api_key`` (``X-API-Key``). Raises
+        :class:`AuthError` if the selected credential is unavailable.
         """
-        return self._request(method, path, params=params, json=json, require_auth=True)
+        return self._request(method, path, params=params, json=json,
+                             require_auth=True, auth=auth)
 
     def request(
         self,
@@ -127,14 +174,15 @@ class Session:
         *,
         params: dict[str, Any] | None = None,
         json: Any = None,
+        auth: str = "auto",
     ) -> httpx.Response:
-        """Issue a request that uses the cached token if available.
+        """Issue a request, falling back to anonymous when no credential is set.
 
-        Falls back to an anonymous call when no token is cached -- useful
-        for endpoints that allow anonymous access (e.g. ``/open/datasets``
-        list / detail).
+        Useful for endpoints that allow anonymous access (e.g. dataset
+        search/detail). ``auth`` mirrors :meth:`authed_request`.
         """
-        return self._request(method, path, params=params, json=json, require_auth=False)
+        return self._request(method, path, params=params, json=json,
+                             require_auth=False, auth=auth)
 
     def _request(
         self,
@@ -144,18 +192,16 @@ class Session:
         params: dict[str, Any] | None,
         json: Any,
         require_auth: bool,
+        auth: str = "auto",
     ) -> httpx.Response:
         url = path if path.startswith(("http://", "https://")) else (
             self.config.api_base.rstrip("/") + "/" + path.lstrip("/")
         )
-        headers: dict[str, str] = {"User-Agent": "khdp/0.3.0"}
-        if require_auth:
-            headers["Authorization"] = f"Bearer {self.access_token()}"
-        else:
-            # Anonymous fall-through: attach the bearer if we have one,
-            # otherwise just call without it.
-            with contextlib.suppress(AuthError):
-                headers["Authorization"] = f"Bearer {self.access_token()}"
+        mode = self._resolve_auth(auth)
+        headers: dict[str, str] = {
+            "User-Agent": "khdp/0.3.0",
+            **self._auth_headers(mode, require_auth=require_auth),
+        }
         with httpx.Client(timeout=30.0) as http:
             return http.request(
                 method.upper(), url, params=params, json=json, headers=headers,

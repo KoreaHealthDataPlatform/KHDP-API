@@ -43,3 +43,7 @@ khdp.local.toml
 
 # Claude Code per-user / per-project settings — never commit
 .claude/
+
+# Internal / superuser-only docs (roadmap, backend coordination) — not
+# part of the public package. Kept locally, never published.
+superuser/

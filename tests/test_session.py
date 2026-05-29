@@ -81,3 +81,52 @@ def test_authed_request_attaches_bearer(session: Session, httpx_mock) -> None:
     resp = session.authed_request("GET", "/member/me")
     assert resp.status_code == 200
     assert resp.json() == {"ok": True}
+
+
+def _app_key_session(tmp_path: Path, **overrides: object) -> Session:
+    cfg = Config(
+        app_id="APP", api_base="https://api.example/_api",
+        token_dir=tmp_path, use_keyring=False, **overrides,
+    )
+    return Session(
+        config=cfg, auth=KhdpAuthClient(cfg),
+        store=TokenStore(tmp_path, use_keyring=False),
+    )
+
+
+def test_authed_request_app_key_headers(tmp_path: Path, httpx_mock) -> None:
+    s = _app_key_session(tmp_path, app_secret="SEC")
+
+    def _check(request):
+        import httpx
+        assert request.headers["x-app-id"] == "APP"
+        assert request.headers["x-app-secret"] == "SEC"
+        assert "authorization" not in request.headers
+        return httpx.Response(200, json={"ok": True})
+
+    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
+    assert s.authed_request("GET", "/open/datasets", auth="app_key").status_code == 200
+
+
+def test_authed_request_auto_falls_back_to_app_key(tmp_path: Path, httpx_mock) -> None:
+    s = _app_key_session(tmp_path, app_secret="SEC")  # no cached token
+
+    def _check(request):
+        import httpx
+        assert request.headers["x-app-id"] == "APP"
+        return httpx.Response(200, json={"ok": True})
+
+    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
+    assert s.authed_request("GET", "/open/datasets").status_code == 200
+
+
+def test_authed_request_api_key_header(tmp_path: Path, httpx_mock) -> None:
+    s = _app_key_session(tmp_path, api_key="KEY")
+
+    def _check(request):
+        import httpx
+        assert request.headers["x-api-key"] == "KEY"
+        return httpx.Response(200, json={"ok": True})
+
+    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
+    assert s.authed_request("GET", "/open/datasets", auth="api_key").status_code == 200

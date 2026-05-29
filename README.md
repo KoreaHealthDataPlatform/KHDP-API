@@ -10,9 +10,10 @@ Auth + MCP connector for the **Korea Health Data Platform (KHDP)**.
 - comes with thin wrappers for **Claude Code**, **OpenAI Codex CLI**,
   and **Gemini CLI** so the experience is uniform across coding agents.
 
-> **Status:** alpha. APIs and tool names may move during Phase 0–1 of
-> the [PLAN.md](./PLAN.md) roadmap.
->
+For the raw HTTP API (endpoints, payloads, scopes, errors) see
+[REST_API.md](./REST_API.md). For agent/tool usage see
+[AGENTS.md](./AGENTS.md).
+
 > **Note (2026-05):** the previously bundled SNUH SuperTable Python
 > client (`khdp.supertable`) has been removed. SNUH SuperTable is now
 > a plain HTTPS service that exposes its own AGENTS.md and JSON
@@ -38,6 +39,19 @@ the LLM context.
 All subsequent KHDP API calls go out with `Authorization: Bearer
 <accessToken>`.
 
+In addition to PKCE, the connector also supports the two headless
+credential types KHDP exposes — useful when no user login is appropriate
+(server-side syncs, bots, headless scripts):
+
+* **App Key** — `X-App-Id` / `X-App-Secret`. Set `app_secret`
+  (`KHDP_APP_SECRET`) alongside `app_id`.
+* **API Key** — `X-API-Key`. Set `api_key` (`KHDP_API_KEY`). *KHDP's
+  personal-API-key issuance backend is not live yet; the connector
+  forwards a configured value.*
+
+Pick a credential per call with `khdp api --auth {auto,bearer,app-key,api-key}`
+(default `auto`: cached user token → App Key → API key).
+
 ```
 ┌────────────────────────────────────────────────────────────┐
 │  Claude Code   ·   Codex CLI   ·   Gemini CLI   ·  …       │
@@ -57,11 +71,11 @@ All subsequent KHDP API calls go out with `Authorization: Bearer
 ## Install
 
 ```bash
-pipx install khdp-connector            # recommended; isolates from system Python
+pipx install khdp            # recommended; isolates from system Python
 # or
-pip install khdp-connector
+pip install khdp
 # or with OS-keychain support:
-pipx install 'khdp-connector[keyring]'
+pipx install 'khdp[keyring]'
 ```
 
 ## One-time configuration
@@ -74,6 +88,8 @@ loopback entry on the app is enough.
 ```toml
 # ./khdp.local.toml
 app_id   = "00000000-0000-0000-0000-000000000000"
+# app_secret = "..."   # optional: enables App Key auth (X-App-Id/X-App-Secret)
+# api_key    = "..."   # optional: personal API key (X-API-Key)
 api_base = "https://khdp.net/_api"  # default; override for staging
 ```
 
@@ -81,6 +97,8 @@ api_base = "https://khdp.net/_api"  # default; override for staging
 
 ```bash
 export KHDP_APP_ID=00000000-0000-0000-0000-000000000000
+export KHDP_APP_SECRET=...   # optional
+export KHDP_API_KEY=...      # optional
 ```
 
 > **Don't have an `app_id` yet?** Coordinate with the KHDP team to
@@ -123,6 +141,7 @@ commit. `khdp submissions <cmd>` currently prints `not implemented yet`.
 ### Escape hatch
 ```bash
 khdp api METHOD PATH [--query KEY=VAL ...] [--data '{...}']
+                     [--auth {auto,bearer,app-key,api-key}]
 ```
 Use this for any endpoint not covered by a verb above (debugging,
 ops-only routes, …). Output is raw JSON on stdout, status on stderr.
@@ -155,9 +174,6 @@ The MCP server **never** accepts a password through tool arguments —
 passwords would otherwise flow through the LLM context window. Login
 is initiated out-of-band via `khdp login` in the user's terminal; the
 MCP server just reads the resulting token cache.
-
-Future tools (per [PLAN.md](./PLAN.md)) will add dataset I/O, OMOP
-queries, audit log retrieval, and IRB result-pinning.
 
 ## Wrappers
 
@@ -193,8 +209,9 @@ pytest
 
 ## Security model
 
-- **No secret in the binary.** The CLI ships only the user-provided
-  `app_id`. There is no embedded client secret.
+- **No secret in the binary.** Any credentials (`app_secret`, `api_key`,
+  refresh tokens) are user-provided config — never embedded. PKCE login
+  needs no client secret at all.
 - **Password never leaves the local machine** unencrypted; it goes
   only to KHDP's TLS endpoint, never to the LLM, never to the MCP
   context. The MCP tool surface deliberately omits a password
@@ -208,13 +225,6 @@ pytest
   clears local state. Access tokens expire naturally; refresh tokens
   go invalid the next time the access token is rotated.
 
-## Roadmap
-
-See [PLAN.md](./PLAN.md) for the full roadmap. The current
-implementation covers Phase 1 (auth) and a generic API passthrough.
-Dataset I/O, OMOP analysis, and IRB-grade result pinning land in later
-phases.
-
 ## License
 
-Apache 2.0. See [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).

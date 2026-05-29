@@ -58,4 +58,4 @@ suspected vulnerabilities.
 ## License
 
 By submitting a contribution you agree it will be released under the
-project's [Apache-2.0 License](./LICENSE).
+project's [MIT License](./LICENSE).

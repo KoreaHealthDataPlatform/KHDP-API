@@ -76,6 +76,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="query parameter (repeatable)",
     )
     p_api.add_argument("--data", help="JSON body string")
+    p_api.add_argument(
+        "--auth", choices=["auto", "bearer", "app-key", "api-key"], default="auto",
+        help="credential to use (default auto: logged-in user, else App Key/API key)",
+    )
     p_api.set_defaults(func=_cmd_api)
 
     sub.add_parser("mcp", help="run the KHDP MCP server on stdio").set_defaults(func=_cmd_mcp)
@@ -156,6 +160,7 @@ def _cmd_api(session: Session, args: argparse.Namespace) -> int:
     body = json.loads(args.data) if args.data else None
     resp = session.authed_request(
         args.method, args.path, params=params or None, json=body,
+        auth=args.auth.replace("-", "_"),
     )
     print(f"[khdp] {resp.status_code} {resp.reason_phrase}", file=sys.stderr)
     try:
@@ -176,6 +181,8 @@ def _cmd_config(session: Session, _args: argparse.Namespace) -> int:
     _emit({
         "app_id": cfg.app_id or None,
         "api_base": cfg.api_base,
+        "has_app_secret": bool(cfg.app_secret),
+        "has_api_key": bool(cfg.api_key),
         "token_dir": str(cfg.token_dir),
     })
     return 0
