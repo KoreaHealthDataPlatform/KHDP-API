@@ -30,7 +30,9 @@ def session(tmp_path: Path) -> Session:
 def test_status_unauthenticated(session: Session) -> None:
     assert session.status() == {
         "authenticated": False,
+        "auth_mode": None,
         "app_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "pat": None,
     }
 
 
