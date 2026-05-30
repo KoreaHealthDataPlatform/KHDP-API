@@ -197,37 +197,91 @@ function json(body: object): Response {
 
 const LANDING_HTML = `<!doctype html>
 <html lang="en">
+<head>
 <meta charset="utf-8">
-<title>KHDP for AI agents</title>
+<title>KHDP — for AI agents</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Korea Health Data Platform — a small REST surface for AI agents and researchers.">
 <style>
   :root { color-scheme: light dark; }
-  body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         max-width: 720px; margin: 4rem auto; padding: 0 1.25rem; }
-  h1 { font-size: 1.6rem; margin: 0 0 .5rem; }
-  code { background: rgba(127,127,127,.15); padding: .1rem .35rem; border-radius: .25rem; }
-  blockquote { margin: 1.2rem 0; padding: .8rem 1rem; background: rgba(127,127,127,.1);
-               border-left: 4px solid #888; }
-  ul { padding-left: 1.25rem; }
-  li { margin: .35rem 0; }
-  small { color: #888; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+    color: #111;
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: clamp(3rem, 12vh, 9rem) 1.5rem 4rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 1.25rem;
+  }
+  h1 .sub {
+    display: block;
+    color: #8a8a8a;
+    font-weight: 500;
+  }
+  .lede {
+    font-size: 1.0625rem;
+    color: #5a5a5a;
+    margin: 0 0 2.25rem;
+  }
+  .cta {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+  .btn {
+    display: inline-block;
+    background: #111;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background .15s;
+  }
+  .btn:hover { background: #2a2a2a; }
+  .link {
+    color: #8a8a8a;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: color .15s;
+  }
+  .link::after { content: "  \\2192"; }
+  .link:hover { color: #111; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #f4f4f4; background: #0a0a0a; }
+    h1 .sub { color: #6a6a6a; }
+    .lede { color: #a5a5a5; }
+    .btn { background: #f4f4f4; color: #0a0a0a; }
+    .btn:hover { background: #e0e0e0; }
+    .link { color: #6a6a6a; }
+    .link:hover { color: #f4f4f4; }
+  }
 </style>
-<h1>KHDP for AI agents</h1>
-<p>The <strong>Korea Health Data Platform</strong>'s AI-agent entry point.</p>
-
-<p>Tell your AI coding agent (Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI, …):</p>
-<blockquote>
-  Please read <code>https://khdp.ai/AGENTS.md</code> and follow its guidance for the KHDP API.
-  When authentication is needed, ask me whether I prefer <strong>OAuth (browser login)</strong>
-  or a <strong>Personal Access Token (PAT)</strong> before proceeding.
-</blockquote>
-
-<ul>
-  <li><a href="/AGENTS.md">/AGENTS.md</a> — agent instructions (mirror)</li>
-  <li><a href="/v1/datasets?limit=5">/v1/datasets</a> — REST API gateway (v1)</li>
-  <li><a href="https://github.com/KoreaHealthDataPlatform/khdp-api">github.com/KoreaHealthDataPlatform/khdp-api</a> — connector + docs</li>
-</ul>
-
-<p><small>Bytes (dataset downloads/uploads) flow directly between you and the KHDP origin object store via presigned URLs — they never transit this gateway.</small></p>
+</head>
+<body>
+<main>
+  <h1>KHDP<span class="sub">for AI agents</span></h1>
+  <p class="lede">A small REST surface for medical research.</p>
+  <p class="cta">
+    <a class="btn" href="https://khdp.net">Sign in with KHDP</a>
+    <a class="link" href="/AGENTS.md">AGENTS.md</a>
+  </p>
+</main>
+</body>
 </html>
 `;
