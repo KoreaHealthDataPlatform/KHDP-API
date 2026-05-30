@@ -40,6 +40,14 @@ Append [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.to
 
 > Full walkthrough: [docs/quickstart.en.md](./docs/quickstart.en.md). Endpoint reference: [docs/REST_API.md](./docs/REST_API.md).
 
+## Use it from an AI agent
+
+Working with KHDP through an AI coding agent (Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI, …)? Paste this into the agent:
+
+> Please read https://github.com/KoreaHealthDataPlatform/khdp-api/blob/main/AGENTS.md and follow its guidance for the KHDP API. When authentication is needed, ask me whether I prefer **OAuth (browser login)** or a **Personal Access Token (PAT)** before proceeding.
+
+The agent then loads [`AGENTS.md`](./AGENTS.md) — which tells it how to install `khdp`, pick the right auth path with you, call the API, handle errors, and treat dataset content as PHI-equivalent.
+
 ## Install
 
 ```bash

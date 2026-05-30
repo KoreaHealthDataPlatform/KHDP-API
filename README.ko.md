@@ -42,6 +42,14 @@ claude mcp add khdp -- khdp-mcp
 
 > 자세한 안내: [docs/quickstart.ko.md](./docs/quickstart.ko.md). 엔드포인트 레퍼런스: [docs/REST_API.md](./docs/REST_API.md).
 
+## AI 에이전트로 사용하기
+
+AI 코딩 에이전트(Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI 등)에 KHDP를 다루게 하시려면 아래 프롬프트를 그대로 붙여넣으세요:
+
+> https://github.com/KoreaHealthDataPlatform/khdp-api/blob/main/AGENTS.md 를 읽고 KHDP API 사용 지침을 그대로 따라주세요. 인증이 필요하면 진행 전에 **OAuth (브라우저 로그인)** 와 **PAT (개인 액세스 토큰)** 중 어느 쪽을 선호하는지 저에게 물어봐 주세요.
+
+에이전트는 [`AGENTS.md`](./AGENTS.md) 를 읽어 `khdp` 설치, 인증 경로 선택, API 호출, 에러 처리, 데이터셋의 PHI-equivalent 취급까지 안내받습니다.
+
 ## 설치
 
 ```bash
