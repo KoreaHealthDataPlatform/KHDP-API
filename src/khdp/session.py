@@ -17,6 +17,27 @@ from khdp.token_store import TokenStore
 log = logging.getLogger(__name__)
 
 
+def _resolve_pat(
+    store: TokenStore, config: Config,
+) -> tuple[str | None, str | None]:
+    """Return ``(token, source)`` for the best available PAT.
+
+    ``source`` is ``"config"`` (env or TOML; populated through
+    :mod:`khdp.config`) or ``"store"`` (a token persisted via
+    ``khdp pat set`` / ``khdp pat new``); ``None`` if neither is set.
+
+    Precedence: ``config.api_key`` first, then the runtime store. Env
+    vars ``KHDP_PAT`` (canonical) and ``KHDP_TOKEN`` (legacy alias) feed
+    into ``config.api_key`` through :func:`khdp.config._env_overrides`.
+    """
+    if config.api_key:
+        return config.api_key, "config"
+    stored = store.load_pat()
+    if stored:
+        return stored, "store"
+    return None, None
+
+
 @dataclass
 class Session:
     config: Config
@@ -55,7 +76,7 @@ class Session:
         return tokens
 
     def logout(self) -> bool:
-        """Delete locally cached tokens.
+        """Delete locally cached PKCE tokens.
 
         KHDP's public ``/_api`` surface does not expose a refresh-token
         revocation endpoint at the time of writing. The web SPA logs
@@ -66,43 +87,55 @@ class Session:
         return self.store.delete(self.config.app_id or None)
 
     def status(self) -> dict[str, Any]:
-        if self.config.api_key:
-            return {
-                "authenticated": True,
-                "app_id": self.config.app_id or None,
-                "source": "api_key (KHDP_TOKEN env)",
-            }
+        pat, pat_source = _resolve_pat(self.store, self.config)
+        pat_info: dict[str, Any] | None = None
+        if pat:
+            pat_info = {"source": pat_source, "prefix": pat[:14]}
+
         tokens = self.store.load(self.config.app_id or None)
         if not tokens:
             return {
-                "authenticated": False,
+                "authenticated": pat is not None,
+                "auth_mode": "pat" if pat else None,
                 "app_id": self.config.app_id or None,
+                "pat": pat_info,
             }
         return {
             "authenticated": True,
+            "auth_mode": "pat" if pat else "oauth",
             "app_id": tokens.app_id or self.config.app_id,
             "expires_at": tokens.expires_at,
             "is_expired": tokens.is_expired,
             "has_refresh_token": tokens.refresh_token is not None,
+            "pat": pat_info,
         }
 
     def access_token(self) -> str:
         """Return a Bearer-class token to use for an authenticated call.
 
-        Prefers the configured **API key** (``KHDP_TOKEN``, a
-        ``khdp_pat_*`` PAT — long-lived, no refresh). Otherwise falls
-        back to the cached **OAuth/PKCE** token and rotates it on
-        expiry. Raises :class:`AuthError` if neither is available.
+        Prefers an API key / PAT (``config.api_key`` from
+        ``KHDP_PAT`` / ``KHDP_TOKEN`` env or TOML, or a PAT persisted
+        via ``khdp pat set`` / ``khdp pat new``) over the cached
+        OAuth/PKCE token. Raises :class:`AuthError` if no credential is
+        available.
         """
-        if self.config.api_key:
-            return self.config.api_key
-        return self._oauth_access_token()
+        pat, _ = _resolve_pat(self.store, self.config)
+        if pat:
+            return pat
+        return self.oauth_access_token()
 
-    def _oauth_access_token(self) -> str:
-        """OAuth-only path: read the cached PKCE token, refreshing on expiry."""
+    def oauth_access_token(self) -> str:
+        """Return only the OAuth (PKCE) access token, ignoring any PAT.
+
+        Used by ``khdp pat new`` where we explicitly need the user's
+        OAuth identity to call ``POST /oauth/api-tokens``.
+        """
         tokens = self.store.load(self.config.app_id or None)
         if tokens is None:
-            raise AuthError("Not logged in. Run `khdp login` first.")
+            raise AuthError(
+                "Not authenticated. Run `khdp login` or set a PAT "
+                "(`KHDP_PAT` env or `khdp pat set <token>`)."
+            )
         if not tokens.is_expired:
             return tokens.access_token
         if not tokens.refresh_token:
@@ -125,18 +158,21 @@ class Session:
 
         * ``app_key`` -- ``X-App-Id`` / ``X-App-Secret``; authenticates the
           *app*, not a user. Manual issuance.
-        * ``api_key`` -- ``Authorization: Bearer <api_key>`` from the user's
-          KHDP "API Token" page. Long-lived; no PKCE refresh.
+        * ``api_key`` -- ``Authorization: Bearer <token>``; the token is a
+          ``khdp_pat_*`` PAT from any source (``KHDP_PAT`` env,
+          ``KHDP_TOKEN`` legacy alias, ``khdp pat set`` store, or
+          ``api_key`` in TOML). Long-lived; no PKCE refresh.
         * ``oauth``  -- ``Authorization: Bearer <pkce_token>`` from
           ``khdp login``. Short-lived; PKCE refresh on the fly.
 
-        ``auto`` picks: api_key → oauth (cached) → app_key.
+        ``auto`` picks: api_key (PAT) → oauth (cached) → app_key.
         """
         if auth in ("app_key", "api_key", "oauth"):
             return auth
         if auth != "auto":
             raise ValueError(f"unknown auth mode: {auth!r}")
-        if self.config.api_key:
+        pat, _ = _resolve_pat(self.store, self.config)
+        if pat:
             return "api_key"
         if self.store.load(self.config.app_id or None) is not None:
             return "oauth"
@@ -156,17 +192,19 @@ class Session:
                 "X-App-Secret": self.config.app_secret,
             }
         if mode == "api_key":
-            if not self.config.api_key:
+            pat, _ = _resolve_pat(self.store, self.config)
+            if not pat:
                 raise AuthError(
-                    "API key auth requires api_key (set KHDP_TOKEN)."
+                    "api_key auth requires a PAT "
+                    "(set KHDP_PAT or run `khdp pat set <token>`)."
                 )
-            return {"Authorization": f"Bearer {self.config.api_key}"}
+            return {"Authorization": f"Bearer {pat}"}
         # oauth
         if require_auth:
-            return {"Authorization": f"Bearer {self._oauth_access_token()}"}
+            return {"Authorization": f"Bearer {self.oauth_access_token()}"}
         # Anonymous fall-through: attach a Bearer if one is cached.
         try:
-            return {"Authorization": f"Bearer {self._oauth_access_token()}"}
+            return {"Authorization": f"Bearer {self.oauth_access_token()}"}
         except AuthError:
             return {}
 
@@ -184,7 +222,7 @@ class Session:
         ``auth`` selects the credential: ``auto`` (default; picks
         ``api_key`` → ``oauth`` → ``app_key``), ``app_key``
         (``X-App-Id`` / ``X-App-Secret``), ``api_key`` (``Authorization:
-        Bearer <KHDP_TOKEN>``, long-lived), or ``oauth`` (cached PKCE
+        Bearer <PAT>``, long-lived), or ``oauth`` (cached PKCE
         token from ``khdp login``). Raises :class:`AuthError` if the
         selected credential is unavailable.
         """

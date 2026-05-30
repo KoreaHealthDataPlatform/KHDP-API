@@ -90,7 +90,9 @@ def test_pkce_login_callback_without_code_raises(
 
 
 def test_pkce_login_requires_app_id(tmp_path: Path) -> None:
-    cfg = Config(token_dir=tmp_path, use_keyring=False)
+    # 디폴트로 KHDP-registered CLI app 이 박혀 있으므로 명시적으로 ""
+    # 를 지정해야 "app_id 필요" 경로를 검증할 수 있다.
+    cfg = Config(app_id="", token_dir=tmp_path, use_keyring=False)
     with KhdpAuthClient(cfg) as client, pytest.raises(AuthError) as exc:
         client.pkce_login(open_browser=lambda _u: True)
     assert "app_id" in str(exc.value)

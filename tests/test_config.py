@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from khdp.config import DEFAULT_API_BASE, load_config
+from khdp.config import (
+    DEFAULT_API_BASE,
+    DEFAULT_AUTHORIZE_URL,
+    DEFAULT_CLI_APP_ID,
+    load_config,
+)
 
 
 def _clear_khdp_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -17,7 +22,9 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _clear_khdp_env(monkeypatch)
     cfg = load_config()
     assert cfg.api_base == DEFAULT_API_BASE
-    assert cfg.app_id == ""
+    # 공식 KHDP CLI app 이 디폴트로 박혀 있어 사전 설정 없이도 PKCE 가능.
+    assert cfg.app_id == DEFAULT_CLI_APP_ID
+    assert cfg.authorize_url == DEFAULT_AUTHORIZE_URL
     assert cfg.redirect_url == ""
     assert cfg.use_keyring is True
 

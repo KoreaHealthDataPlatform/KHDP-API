@@ -30,7 +30,9 @@ def session(tmp_path: Path) -> Session:
 def test_status_unauthenticated(session: Session) -> None:
     assert session.status() == {
         "authenticated": False,
+        "auth_mode": None,
         "app_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "pat": None,
     }
 
 
@@ -139,8 +141,9 @@ def test_status_reflects_api_key(tmp_path: Path) -> None:
     s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
     assert s.status() == {
         "authenticated": True,
+        "auth_mode": "pat",
         "app_id": "APP",
-        "source": "api_key (KHDP_TOKEN env)",
+        "pat": {"source": "config", "prefix": "khdp_pat_FAKE"},
     }
 
 
