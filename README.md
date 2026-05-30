@@ -4,7 +4,7 @@
 
 The developer interface for the **Korea Health Data Platform** — search, download, and submit medical research datasets from `curl`, Python, or any AI coding agent.
 
-- REST API at `https://khdp.net/_api` — see [docs/REST_API.md](./docs/REST_API.md).
+- REST API at `https://khdp.ai/v1` — see [docs/REST_API.md](./docs/REST_API.md).
 - Anonymous browsing works; authentication (App Key / OAuth / API Token) unlocks downloads and submissions.
 - One authenticated session powers the CLI, Python library, and an MCP server for Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
@@ -14,7 +14,7 @@ The developer interface for the **Korea Health Data Platform** — search, downl
 
 ### 1. curl
 ```bash
-curl 'https://khdp.net/_api/open/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.ai/v1/open/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python (`khdp` SDK)
@@ -44,7 +44,7 @@ Append [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.to
 
 Working with KHDP through an AI coding agent (Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI, …)? Paste this into the agent:
 
-> Please read https://github.com/KoreaHealthDataPlatform/khdp-api/blob/main/AGENTS.md and follow its guidance for the KHDP API. When authentication is needed, ask me whether I prefer **OAuth (browser login)** or a **Personal Access Token (PAT)** before proceeding.
+> Please read https://khdp.ai/AGENTS.md and follow its guidance for the KHDP API. When authentication is needed, ask me whether I prefer **OAuth (browser login)** or a **Personal Access Token (PAT)** before proceeding.
 
 The agent then loads [`AGENTS.md`](./AGENTS.md) — which tells it how to install `khdp`, pick the right auth path with you, call the API, handle errors, and treat dataset content as PHI-equivalent.
 
@@ -77,7 +77,7 @@ Get an `app_id` from the KHDP team. Personal API tokens come from *Settings → 
 app_id     = "00000000-0000-0000-0000-000000000000"
 # app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # personal API token
-api_base   = "https://khdp.net/_api"
+api_base   = "https://khdp.ai/v1"
 ```
 
 Or via env: `KHDP_APP_ID`, `KHDP_APP_SECRET`, `KHDP_TOKEN`.

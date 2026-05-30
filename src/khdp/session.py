@@ -261,7 +261,7 @@ class Session:
         )
         mode = self._resolve_auth(auth)
         headers: dict[str, str] = {
-            "User-Agent": "khdp/0.3.0",
+            "User-Agent": "khdp/0.5.0",
             **self._auth_headers(mode, require_auth=require_auth),
         }
         with httpx.Client(timeout=30.0) as http:

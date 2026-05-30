@@ -94,7 +94,7 @@ _TOOLS: list[dict[str, Any]] = [
                     "description": (
                         "API path (e.g. '/oauth/redirect-url') or "
                         "absolute URL. Relative paths are resolved "
-                        "against KHDP_API_BASE (default https://khdp.net/_api)."
+                        "against KHDP_API_BASE (default https://khdp.ai/v1)."
                     ),
                 },
                 "query": {

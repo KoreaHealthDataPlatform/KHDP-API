@@ -4,7 +4,8 @@
  * Surfaces:
  *  - GET  /                  → minimal landing page pointing agents at /AGENTS.md
  *  - GET  /AGENTS.md         → mirror of the GitHub-hosted AGENTS.md (60s edge cache)
- *  - ANY  /v1/*              → passthrough to the KHDP backend (khdp.net/_api/open/*)
+ *  - ANY  /v1/gpu/*          → passthrough to the kgpu gateway (api.kgpu.net/v1/*)
+ *  - ANY  /v1/*              → passthrough to the KHDP backend (khdp.net/_api/*)
  *  - GET  /healthz           → liveness probe
  *
  * Bytes (dataset downloads/uploads) never transit this Worker — KHDP
@@ -15,6 +16,7 @@
 export interface Env {
   GITHUB_AGENTS_RAW: string;
   BACKEND_BASE: string;
+  KGPU_BASE: string;
 }
 
 const HOP_BY_HOP = new Set([
@@ -43,6 +45,9 @@ export default {
       if (url.pathname === "/") return landing();
       if (url.pathname === "/healthz") return json({ ok: true, requestId });
       if (url.pathname === "/AGENTS.md") return agentsProxy(req, env, ctx);
+      if (url.pathname === "/v1/gpu" || url.pathname.startsWith("/v1/gpu/")) {
+        return gpuGateway(req, env, requestId);
+      }
       if (url.pathname.startsWith("/v1/")) return v1Gateway(req, env, requestId);
       return notFound(requestId);
     } catch (err) {
@@ -82,16 +87,40 @@ async function v1Gateway(
   env: Env,
   requestId: string,
 ): Promise<Response> {
+  return proxyTo(req, env.BACKEND_BASE, "/v1", requestId);
+}
+
+/** Forward /v1/gpu/* to the kgpu gateway at api.kgpu.net/v1/*. */
+async function gpuGateway(
+  req: Request,
+  env: Env,
+  requestId: string,
+): Promise<Response> {
+  return proxyTo(req, env.KGPU_BASE, "/v1/gpu", requestId, "/v1");
+}
+
+/**
+ * Generic passthrough: strip `stripPrefix` from the incoming path, optionally
+ * replace it with `replacePrefix`, append to `upstreamBase`, and forward.
+ */
+async function proxyTo(
+  req: Request,
+  upstreamBase: string,
+  stripPrefix: string,
+  requestId: string,
+  replacePrefix: string = "",
+): Promise<Response> {
   const url = new URL(req.url);
-  const upstreamPath = url.pathname.slice("/v1".length) || "/";
-  const target = new URL(env.BACKEND_BASE + upstreamPath + url.search);
+  const tail = url.pathname.slice(stripPrefix.length) || "/";
+  const upstreamPath = (replacePrefix + tail) || "/";
+  const target = upstreamBase.replace(/\/$/, "") + upstreamPath + url.search;
 
   const headers = passthroughHeaders(req.headers);
   headers.set("X-Forwarded-Host", url.host);
   headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
   headers.set("X-Request-Id", requestId);
 
-  const upstream = await fetch(target.toString(), {
+  const upstream = await fetch(target, {
     method: req.method,
     headers,
     body: hasBody(req.method) ? req.body : undefined,
