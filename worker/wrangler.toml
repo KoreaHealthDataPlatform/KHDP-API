@@ -7,17 +7,15 @@ compatibility_flags = ["nodejs_compat"]
 # (https://khdp-ai-gateway.<account>.workers.dev).
 workers_dev = true
 
-# Custom-domain bindings for production. Both routes go through the same
-# Worker; the script discriminates by hostname / path. Uncomment after the
-# khdp.ai zone is `active` in the Cloudflare dashboard (NS migration done).
-#
-# [[routes]]
-# pattern = "khdp.ai"
-# custom_domain = true
-#
-# [[routes]]
-# pattern = "www.khdp.ai"
-# custom_domain = true
+# khdp.ai zone is active in Cloudflare as of 2026-05-30. Wrangler binds
+# both apex and www to this Worker on the next deploy.
+[[routes]]
+pattern = "khdp.ai"
+custom_domain = true
+
+[[routes]]
+pattern = "www.khdp.ai"
+custom_domain = true
 
 [observability]
 enabled = true
