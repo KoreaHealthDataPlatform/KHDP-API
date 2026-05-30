@@ -1,233 +1,146 @@
-# KHDPConnector
+# KHDP API
 
-Auth + MCP connector for the **Korea Health Data Platform (KHDP)**.
+**English** · [한국어](./README.ko.md) · [Español](./README.es.md) · [中文](./README.zh-CN.md) · [日本語](./README.ja.md)
 
-`khdp` is a CLI-first Python package that:
+The developer interface for the **Korea Health Data Platform** — search, download, and submit medical research datasets from `curl`, Python, or any AI coding agent.
 
-- handles login against the KHDP central auth API,
-- exposes the authenticated surface through a Model Context Protocol
-  (MCP) server (4 tools),
-- comes with thin wrappers for **Claude Code**, **OpenAI Codex CLI**,
-  and **Gemini CLI** so the experience is uniform across coding agents.
+- REST API at `https://khdp.net/_api` — see [docs/REST_API.md](./docs/REST_API.md).
+- Anonymous browsing works; authentication (App Key / OAuth / API Token) unlocks downloads and submissions.
+- One authenticated session powers the CLI, Python library, and an MCP server for Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
-For the raw HTTP API (endpoints, payloads, scopes, errors) see
-[REST_API.md](./REST_API.md). For agent/tool usage see
-[AGENTS.md](./AGENTS.md).
+> Repo: `khdp-api` · Python package: `khdp` (`pip install khdp`).
 
-> **Note (2026-05):** the previously bundled SNUH SuperTable Python
-> client (`khdp.supertable`) has been removed. SNUH SuperTable is now
-> a plain HTTPS service that exposes its own AGENTS.md and JSON
-> endpoints — any HTTP client (curl, requests, fetch) can use it
-> directly, no library required.
+## Quick start — four ways to call the API
 
-## How it talks to KHDP
-
-The connector authenticates against KHDP via the **OAuth 2.0
-Authorization Code flow with PKCE** (RFC 7636), using a **loopback
-redirect** (RFC 8252 §7.3) so the CLI can capture the auth code on the
-user's own machine without exposing a password to the CLI process or
-the LLM context.
-
-* `GET <khdp web>/external/oauth-login?appId&redirectUrl&codeChallenge&...`
-  -- the user's browser is sent here. KHDP's web UI handles login and
-  consent, then redirects to `http://127.0.0.1:<port>/callback?code=...`.
-* `POST /_api/oauth/token        {code, appId, codeVerifier}` -- the
-  CLI exchanges the authorization code for a Bearer token pair.
-* `POST /_api/oauth/refresh-token {appId, refreshToken}` -- rotate an
-  expired access token.
-
-All subsequent KHDP API calls go out with `Authorization: Bearer
-<accessToken>`.
-
-The connector supports the three KHDP credential classes:
-
-* **App Key** (authenticates the *app*, not a user) — `X-App-Id` /
-  `X-App-Secret`. Manual issuance via the KHDP team. Set `app_secret`
-  (`KHDP_APP_SECRET`) alongside `app_id`.
-* **API Key** (per-user personal token, long-lived, **no PKCE refresh**) —
-  `Authorization: Bearer khdp_pat_…`. Issued from KHDP Settings → Account
-  → API Token; set `KHDP_TOKEN` and the connector uses it directly with no
-  `khdp login`.
-* **OAuth** (per-user, browser interaction, short-lived) —
-  `Authorization: Bearer <access_token>`. Obtain via `khdp login` (PKCE);
-  the connector refreshes the rotated token transparently.
-
-Pick a credential per call with
-`khdp api --auth {auto,app-key,api-key,oauth}` — default `auto` picks:
-**api-key → oauth (cached) → app-key**.
-
+### 1. curl
+```bash
+curl 'https://khdp.net/_api/open/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
-┌────────────────────────────────────────────────────────────┐
-│  Claude Code   ·   Codex CLI   ·   Gemini CLI   ·  …       │
-│        │              │              │                      │
-│        └──────── MCP (stdio JSON-RPC) ───────┐             │
-│                                              ▼             │
-│                                    khdp-connector (this)   │
-│                                              │             │
-│   khdp login (PKCE / browser)                │             │
-│                                              ▼             │
-│   POST /_api/oauth/token       POST /_api/oauth/...        │
-│        (auth-code → tokens)         (any KHDP endpoint)    │
-│                          khdp.net                          │
-└────────────────────────────────────────────────────────────┘
+
+### 2. Python (`khdp` SDK)
+```python
+# pip install khdp
+from khdp import Session
+
+with Session.open() as s:
+    r = s.request("GET", "/open/datasets", params={"query": "heart", "limit": 5})
+    print([d["code"] for d in r.json()["items"]])
 ```
+
+### 3. Claude Code (MCP)
+```bash
+pip install khdp
+khdp login
+claude mcp add khdp -- khdp-mcp
+```
+Then ask Claude Code: *"Search KHDP for heart-disease datasets and summarize the top hits."*
+
+### 4. OpenAI Codex CLI
+Append [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) to `~/.codex/config.toml`, then `khdp login` once.
+
+> Full walkthrough: [docs/quickstart.en.md](./docs/quickstart.en.md). Endpoint reference: [docs/REST_API.md](./docs/REST_API.md).
 
 ## Install
 
 ```bash
-pipx install khdp            # recommended; isolates from system Python
-# or
-pip install khdp
-# or with OS-keychain support:
-pipx install 'khdp[keyring]'
+pipx install khdp                 # recommended — isolates from system Python
+pipx install 'khdp[keyring]'      # + OS-keychain token storage
 ```
 
-## One-time configuration
+The package installs:
+- `khdp` — CLI (login, datasets, submissions, raw `api` escape hatch)
+- `khdp-mcp` — MCP server for coding agents
+- `import khdp` — Python library
 
-You need a KHDP-registered `app_id` (UUID). The CLI uses a loopback
-redirect (`http://127.0.0.1:<port>/callback`) -- the KHDP backend
-matches IP-literal loopbacks ignoring port, so a single registered
-loopback entry on the app is enough.
+## Authentication
+
+Three credential types, interchangeable across CLI, SDK, and MCP.
+
+| Type | Header(s) | Identity | Typical use |
+| --- | --- | --- | --- |
+| **App Key** | `X-App-Id` + `X-App-Secret` | the app | server bots, public catalog mirrors |
+| **OAuth (PKCE)** | `Authorization: Bearer <jwt>` | the user | CLI, MCP, SaaS acting on the user's behalf |
+| **API Token** (PAT) | `Authorization: Bearer khdp_pat_…` | the user | notebooks, AI agents (long-lived, no refresh) |
+
+Get an `app_id` from the KHDP team. Personal API tokens come from *Settings → Account → API Token* at <https://khdp.net>.
 
 ```toml
-# ./khdp.local.toml
-app_id   = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."        # optional: App Key auth (X-App-Id / X-App-Secret)
-# api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
-api_base   = "https://khdp.net/_api"  # default; override for staging
+# ./khdp.local.toml  (or ~/.config/khdp/config.toml)
+app_id     = "00000000-0000-0000-0000-000000000000"
+# app_secret = "..."             # App Key
+# api_key    = "khdp_pat_..."    # personal API token
+api_base   = "https://khdp.net/_api"
 ```
 
-…or:
+Or via env: `KHDP_APP_ID`, `KHDP_APP_SECRET`, `KHDP_TOKEN`.
+
+## CLI
 
 ```bash
-export KHDP_APP_ID=00000000-0000-0000-0000-000000000000
-export KHDP_APP_SECRET=...   # optional (App Key)
-export KHDP_TOKEN=khdp_pat_… # optional (API Key — from KHDP Settings → API Token)
-```
+khdp login [--no-browser]                              # PKCE login (loopback redirect)
+khdp status | refresh | logout | config
 
-> **Don't have an `app_id` yet?** Coordinate with the KHDP team to
-> register a CLI-class app with `http://127.0.0.1:*/callback` listed
-> as an allowed redirect URL.
+khdp datasets list      [--query KW] [--policy open|restricted|...]
+khdp datasets show      <code>[@<version>]
+khdp datasets files     <code>[@<version>] [--key PREFIX]
+khdp datasets download  <code>[@<version>] [--out DIR] [--dry-run]
 
-## CLI usage
-
-### Auth + housekeeping
-```bash
-khdp login          # PKCE: opens the browser to the KHDP login page,
-                    # captures the redirect on a local loopback server
-khdp login --no-browser   # print the URL instead (headless / remote)
-khdp status         # is a token cached? when does it expire?
-khdp refresh        # force a refresh-token rotation
-khdp logout         # delete cached tokens
-khdp config         # print resolved configuration
-khdp mcp            # run the MCP server on stdio (for agents)
-```
-
-### Datasets
-```bash
-khdp datasets list [--query KW] [--policy open|restricted|...] [--page N] [--limit N] [--json]
-khdp datasets show <code>[@<version>] [--json]
-khdp datasets files <code>[@<version>] [--key PREFIX] [--json]
-khdp datasets download-link <code>[@<version>] --key FILE
-khdp datasets download <code>[@<version>] [--out DIR] [--max-pages N] [--dry-run]
-```
-
-* `<code>` alone defaults to `@latest`. `<code>@1.0.0` pins a version.
-* `download` paginates the server's `files-download-link-all`
-  (1000 keys per page) and streams every file to `--out`. Use
-  `--dry-run` to list keys/sizes without fetching; use `--max-pages N`
-  to stop early when only verifying the flow.
-
-### Submissions (scaffold)
-Parser is wired but per-command implementations land in a follow-up
-commit. `khdp submissions <cmd>` currently prints `not implemented yet`.
-
-### Escape hatch
-```bash
-khdp api METHOD PATH [--query KEY=VAL ...] [--data '{...}']
+khdp api METHOD PATH [--query K=V ...] [--data '{...}']
                      [--auth {auto,app-key,api-key,oauth}]
 ```
-Use this for any endpoint not covered by a verb above (debugging,
-ops-only routes, …). Output is raw JSON on stdout, status on stderr.
 
-Configuration resolution order (highest first):
-
-1. `KHDP_*` environment variables
-2. `khdp.local.toml` in the current working directory
-3. `~/.config/khdp/config.toml` (or platform equivalent)
-4. Built-in defaults
+`--auth auto` picks: API Token → cached OAuth → App Key.
 
 ## MCP server
 
 ```bash
-khdp mcp
-# or
-khdp-mcp
+khdp mcp     # stdio transport
 ```
-
-Tools exposed on `stdio`:
 
 | Tool | Purpose |
 | --- | --- |
-| `khdp_auth_status`  | Is the user logged in? When does the token expire? |
-| `khdp_auth_refresh` | Rotate the refresh token to extend the session. |
-| `khdp_auth_logout`  | Delete locally cached tokens. |
-| `khdp_api_request`  | Authenticated HTTP passthrough to the KHDP API. |
+| `khdp_auth_status`  | Logged in? When does the token expire? |
+| `khdp_auth_refresh` | Rotate the refresh token. |
+| `khdp_auth_logout`  | Clear local tokens. |
+| `khdp_api_request`  | Authenticated HTTP passthrough to any KHDP endpoint. |
 
-The MCP server **never** accepts a password through tool arguments —
-passwords would otherwise flow through the LLM context window. Login
-is initiated out-of-band via `khdp login` in the user's terminal; the
-MCP server just reads the resulting token cache.
+The MCP server never accepts a password through tool arguments. Login is initiated out-of-band via `khdp login` in the user's terminal; the MCP server reads the resulting token cache.
 
-## Wrappers
+## Agent wrappers
 
-The same MCP server backs a thin wrapper per agent platform.
+| Platform | Setup |
+| --- | --- |
+| Claude Code | `claude mcp add khdp -- khdp-mcp` and copy [`wrappers/claude-code/skills/khdp-auth`](./wrappers/claude-code/skills/khdp-auth) to `~/.claude/skills/` |
+| OpenAI Codex CLI | Append [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) to `~/.codex/config.toml` |
+| Gemini CLI | Merge [`wrappers/gemini/settings.example.json`](./wrappers/gemini/settings.example.json) into `~/.gemini/settings.json` |
 
-### Claude Code
+Cursor uses the same MCP server — point its `mcp.servers` config at `khdp-mcp`.
 
-```bash
-claude mcp add khdp -- khdp mcp
-cp -r wrappers/claude-code/skills/khdp-auth ~/.claude/skills/
-```
+## Documentation
 
-### OpenAI Codex CLI
+- [Quickstart](./docs/quickstart.en.md) — first five minutes
+- [REST API reference](./docs/REST_API.md) — endpoints, payloads, scopes, errors
+- [`AGENTS.md`](./AGENTS.md) — driving the connector from a coding agent
+- [Canonical spec](https://khdp.net/docs/external-api) — official documentation site
 
-Append `wrappers/codex/config.example.toml` to `~/.codex/config.toml`,
-copy `wrappers/codex/AGENTS.md` to your project root.
+## Security
 
-### Gemini CLI
+- PKCE login (RFC 7636) over a loopback redirect (RFC 8252). No client secret in the CLI binary.
+- The MCP tool surface deliberately omits a password parameter — passwords never reach the LLM context.
+- Tokens are stored in the OS keychain when `khdp[keyring]` is installed; otherwise in a `0600` JSON file in the platform user-config directory.
+- Per-app token isolation by `app_id`.
 
-Merge `wrappers/gemini/settings.example.json` into
-`~/.gemini/settings.json`, or install as a Gemini Extension under
-`.gemini/extensions/khdp/`.
+See [`SECURITY.md`](./SECURITY.md) for the full threat model and reporting policy.
 
 ## Development
 
 ```bash
-git clone https://github.com/KoreaHealthDataPlatform/KHDPConnector.git
-cd KHDPConnector
+git clone https://github.com/KoreaHealthDataPlatform/khdp-api.git
+cd khdp-api
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e '.[dev,keyring]'
 pytest
 ```
-
-## Security model
-
-- **No secret in the binary.** Any credentials (`app_secret`, `api_key`,
-  refresh tokens) are user-provided config — never embedded. PKCE login
-  needs no client secret at all.
-- **Password never leaves the local machine** unencrypted; it goes
-  only to KHDP's TLS endpoint, never to the LLM, never to the MCP
-  context. The MCP tool surface deliberately omits a password
-  argument.
-- **Per-app token isolation.** Multiple KHDP apps on one machine are
-  kept separate by `app_id`.
-- **Token storage.** OS keychain (Keychain / Credential Manager /
-  Secret Service) when the `keyring` extra is installed; otherwise a
-  JSON file with `0600` permissions in the platform user-config dir.
-- **No revocation endpoint exposed by KHDP today.** `khdp logout` only
-  clears local state. Access tokens expire naturally; refresh tokens
-  go invalid the next time the access token is rotated.
 
 ## License
 

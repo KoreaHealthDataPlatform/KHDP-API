@@ -6,9 +6,9 @@ third‑party apps, CLIs, and AI agents use to search, download, and submit
 datasets.
 
 Any HTTP client works: `curl`, `fetch`, `requests`, `httpx`, etc. No SDK is
-required. The [`khdp` connector](./README.md) in this repo is one convenience
+required. The [`khdp` connector](../README.md) in this repo is one convenience
 wrapper over this API (CLI + Python library + MCP server); see
-[AGENTS.md](./AGENTS.md) for the tool-driven path.
+[AGENTS.md](../AGENTS.md) for the tool-driven path.
 
 > **Canonical source.** The authoritative spec lives at
 > <https://khdp.net/docs/external-api>. This file mirrors it for offline /
@@ -318,7 +318,7 @@ Troubleshooting quick hits:
 ## Using this API through the `khdp` connector
 
 The connector wraps the OAuth (PKCE), App Key, and API Key paths. See
-[AGENTS.md](./AGENTS.md) for full agent usage. Quick map:
+[AGENTS.md](../AGENTS.md) for full agent usage. Quick map:
 
 | Goal | Raw HTTP | Connector |
 | --- | --- | --- |

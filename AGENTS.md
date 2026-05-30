@@ -13,7 +13,7 @@ Follows the [agents.md](https://agents.md) convention.
   authenticated tools.
 
 For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors) see
-[REST_API.md](./REST_API.md). This file is about *driving the connector*.
+[docs/REST_API.md](./docs/REST_API.md). This file is about *driving the connector*.
 
 ---
 
@@ -117,7 +117,7 @@ non-zero on HTTP failure.
 ## Python library
 
 ```python
-from khdp.session import Session
+from khdp import Session
 
 with Session.open() as s:
     s.login()                     # opens browser; or login(open_browser=printer)
@@ -193,7 +193,7 @@ cp -r wrappers/claude-code/skills/khdp-auth ~/.claude/skills/
 ## Calling the KHDP API
 
 Endpoint paths, payloads, scopes, and errors live in
-[REST_API.md](./REST_API.md). From an agent you reach them through
+[docs/REST_API.md](./docs/REST_API.md). From an agent you reach them through
 `khdp_api_request` / `khdp api` / the typed subcommands. Highlights:
 
 - `GET /open/datasets` — search public datasets (anonymous OK).
@@ -249,8 +249,10 @@ src/khdp/
   token_store.py    # TokenStore: keychain or 0600 JSON cache
   config.py         # Config + layered load_config()
 wrappers/           # per-agent glue: claude-code (skill), codex, gemini
-docs/               # config example
-REST_API.md         # KHDP external HTTP API reference
+docs/
+  REST_API.md       # KHDP external HTTP API reference
+  i18n-manifest.json# canonical-EN → translation map (drives i18n stale check)
+  example.khdp.local.toml
 CHANGELOG.md        # release notes
 ```
 

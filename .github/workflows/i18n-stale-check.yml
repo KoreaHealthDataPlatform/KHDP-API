@@ -1,0 +1,138 @@
+name: i18n stale check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare canonical vs translation changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const MANIFEST = 'docs/i18n-manifest.json';
+            const LABEL = 'i18n: stale';
+            const MARKER = '<!-- i18n-stale-check -->';
+
+            if (!fs.existsSync(MANIFEST)) {
+              core.info(`No ${MANIFEST}; skipping.`);
+              return;
+            }
+            const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+            const changed = new Set(files.map(f => f.filename));
+
+            const stale = [];
+            for (const entry of manifest.docs) {
+              if (!changed.has(entry.canonical)) continue;
+              for (const [lang, path] of Object.entries(entry.translations)) {
+                const langCfg = manifest.languages[lang];
+                if (!langCfg || langCfg.enabled === false) continue;
+                if (!changed.has(path)) {
+                  stale.push({ canonical: entry.canonical, lang, label: langCfg.label || lang, path });
+                }
+              }
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(MARKER));
+
+            const ensureLabel = async (add) => {
+              if (add) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: [LABEL],
+                });
+              } else {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    name: LABEL,
+                  });
+                } catch (e) {
+                  if (e.status !== 404) throw e;
+                }
+              }
+            };
+
+            if (stale.length === 0) {
+              await ensureLabel(false);
+              if (existing) {
+                const body = `${MARKER}\nAll tracked translations are in sync with this PR's canonical changes.`;
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              }
+              core.info('No stale translations detected.');
+              return;
+            }
+
+            const byCanon = new Map();
+            for (const s of stale) {
+              if (!byCanon.has(s.canonical)) byCanon.set(s.canonical, []);
+              byCanon.get(s.canonical).push(s);
+            }
+
+            const lines = [
+              MARKER,
+              '## i18n stale translations',
+              '',
+              'This PR changes canonical English docs without touching the matching translations.',
+              'Translating in a follow-up PR is fine — this comment is informational, not blocking.',
+              '',
+            ];
+            for (const [canon, items] of byCanon) {
+              lines.push(`- \`${canon}\` changed; also update:`);
+              for (const it of items) {
+                lines.push(`  - \`${it.path}\` (${it.label})`);
+              }
+            }
+            lines.push('');
+            lines.push(`Tracked in \`${MANIFEST}\`. To silence a language temporarily, set \`enabled: false\` there.`);
+
+            const body = lines.join('\n');
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+            await ensureLabel(true);
+            core.info(`Flagged ${stale.length} stale translation(s).`);

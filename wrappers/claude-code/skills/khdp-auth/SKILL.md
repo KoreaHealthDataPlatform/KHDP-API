@@ -75,5 +75,5 @@ context. If status reports `authenticated=false`, ask the user to run
 
 ## References
 
-- KHDP connector source: <https://github.com/KoreaHealthDataPlatform/KHDPConnector>
+- KHDP connector source: <https://github.com/KoreaHealthDataPlatform/khdp-api>
 - MCP specification: <https://modelcontextprotocol.io>
