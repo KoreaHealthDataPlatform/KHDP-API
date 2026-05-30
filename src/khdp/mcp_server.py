@@ -107,12 +107,13 @@ _TOOLS: list[dict[str, Any]] = [
                 },
                 "auth": {
                     "type": "string",
-                    "enum": ["auto", "bearer", "app_key", "api_key"],
+                    "enum": ["auto", "app_key", "api_key", "oauth"],
                     "description": (
-                        "Credential to use. 'auto' (default) prefers the "
-                        "logged-in user token, else App Key, else API key. "
-                        "'app_key' sends X-App-Id / X-App-Secret; 'api_key' "
-                        "sends X-API-Key; 'bearer' forces the user token."
+                        "Credential to use. 'auto' (default) picks: "
+                        "api_key (KHDP_TOKEN env) → oauth (cached PKCE) "
+                        "→ app_key. 'app_key' sends X-App-Id/X-App-Secret; "
+                        "'api_key' sends the configured KHDP API token as "
+                        "Bearer; 'oauth' uses the cached PKCE token."
                     ),
                 },
             },

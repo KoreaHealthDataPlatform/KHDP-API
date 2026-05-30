@@ -66,6 +66,12 @@ class Session:
         return self.store.delete(self.config.app_id or None)
 
     def status(self) -> dict[str, Any]:
+        if self.config.api_key:
+            return {
+                "authenticated": True,
+                "app_id": self.config.app_id or None,
+                "source": "api_key (KHDP_TOKEN env)",
+            }
         tokens = self.store.load(self.config.app_id or None)
         if not tokens:
             return {
@@ -81,11 +87,19 @@ class Session:
         }
 
     def access_token(self) -> str:
-        """Return a valid access token, refreshing if necessary.
+        """Return a Bearer-class token to use for an authenticated call.
 
-        Raises :class:`AuthError` if the user has never logged in or the
-        refresh token has been revoked.
+        Prefers the configured **API key** (``KHDP_TOKEN``, a
+        ``khdp_pat_*`` PAT — long-lived, no refresh). Otherwise falls
+        back to the cached **OAuth/PKCE** token and rotates it on
+        expiry. Raises :class:`AuthError` if neither is available.
         """
+        if self.config.api_key:
+            return self.config.api_key
+        return self._oauth_access_token()
+
+    def _oauth_access_token(self) -> str:
+        """OAuth-only path: read the cached PKCE token, refreshing on expiry."""
         tokens = self.store.load(self.config.app_id or None)
         if tokens is None:
             raise AuthError("Not logged in. Run `khdp login` first.")
@@ -107,20 +121,28 @@ class Session:
     def _resolve_auth(self, auth: str) -> str:
         """Decide which credential to use for an outgoing request.
 
-        ``auto`` prefers a cached user token (Bearer); with none available
-        it falls back to App Key, then to a personal API key.
+        Three modes are user-visible:
+
+        * ``app_key`` -- ``X-App-Id`` / ``X-App-Secret``; authenticates the
+          *app*, not a user. Manual issuance.
+        * ``api_key`` -- ``Authorization: Bearer <api_key>`` from the user's
+          KHDP "API Token" page. Long-lived; no PKCE refresh.
+        * ``oauth``  -- ``Authorization: Bearer <pkce_token>`` from
+          ``khdp login``. Short-lived; PKCE refresh on the fly.
+
+        ``auto`` picks: api_key → oauth (cached) → app_key.
         """
-        if auth in ("bearer", "app_key", "api_key"):
+        if auth in ("app_key", "api_key", "oauth"):
             return auth
         if auth != "auto":
             raise ValueError(f"unknown auth mode: {auth!r}")
-        if self.store.load(self.config.app_id or None) is not None:
-            return "bearer"
-        if self.config.app_id and self.config.app_secret:
-            return "app_key"
         if self.config.api_key:
             return "api_key"
-        return "bearer"
+        if self.store.load(self.config.app_id or None) is not None:
+            return "oauth"
+        if self.config.app_id and self.config.app_secret:
+            return "app_key"
+        return "oauth"  # will raise an informative AuthError downstream
 
     def _auth_headers(self, mode: str, *, require_auth: bool) -> dict[str, str]:
         if mode == "app_key":
@@ -136,15 +158,15 @@ class Session:
         if mode == "api_key":
             if not self.config.api_key:
                 raise AuthError(
-                    "API key auth requires api_key (set KHDP_API_KEY)."
+                    "API key auth requires api_key (set KHDP_TOKEN)."
                 )
-            return {"X-API-Key": self.config.api_key}
-        # bearer
+            return {"Authorization": f"Bearer {self.config.api_key}"}
+        # oauth
         if require_auth:
-            return {"Authorization": f"Bearer {self.access_token()}"}
-        # Anonymous fall-through: attach a token if one is cached.
+            return {"Authorization": f"Bearer {self._oauth_access_token()}"}
+        # Anonymous fall-through: attach a Bearer if one is cached.
         try:
-            return {"Authorization": f"Bearer {self.access_token()}"}
+            return {"Authorization": f"Bearer {self._oauth_access_token()}"}
         except AuthError:
             return {}
 
@@ -159,10 +181,12 @@ class Session:
     ) -> httpx.Response:
         """Issue an authenticated request against the KHDP API base.
 
-        ``auth`` selects the credential: ``auto`` (default), ``bearer``
-        (the logged-in user token), ``app_key`` (``X-App-Id`` /
-        ``X-App-Secret``), or ``api_key`` (``X-API-Key``). Raises
-        :class:`AuthError` if the selected credential is unavailable.
+        ``auth`` selects the credential: ``auto`` (default; picks
+        ``api_key`` → ``oauth`` → ``app_key``), ``app_key``
+        (``X-App-Id`` / ``X-App-Secret``), ``api_key`` (``Authorization:
+        Bearer <KHDP_TOKEN>``, long-lived), or ``oauth`` (cached PKCE
+        token from ``khdp login``). Raises :class:`AuthError` if the
+        selected credential is unavailable.
         """
         return self._request(method, path, params=params, json=json,
                              require_auth=True, auth=auth)

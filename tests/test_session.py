@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from khdp.config import Config
-from khdp.oauth import KhdpAuthClient, TokenSet
+from khdp.oauth import AuthError, KhdpAuthClient, TokenSet
 from khdp.session import Session
 from khdp.token_store import TokenStore
 
@@ -120,13 +120,35 @@ def test_authed_request_auto_falls_back_to_app_key(tmp_path: Path, httpx_mock) -
     assert s.authed_request("GET", "/open/datasets").status_code == 200
 
 
-def test_authed_request_api_key_header(tmp_path: Path, httpx_mock) -> None:
-    s = _app_key_session(tmp_path, api_key="KEY")
+def test_authed_request_api_key_sends_bearer(
+    tmp_path: Path, httpx_mock,
+) -> None:
+    """KHDP API key (a `khdp_pat_*` PAT) is sent as `Authorization: Bearer`."""
+    s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
 
     def _check(request):
         import httpx
-        assert request.headers["x-api-key"] == "KEY"
+        assert request.headers["authorization"] == "Bearer khdp_pat_FAKE"
         return httpx.Response(200, json={"ok": True})
 
     httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
-    assert s.authed_request("GET", "/open/datasets", auth="api_key").status_code == 200
+    assert s.authed_request("GET", "/open/datasets").status_code == 200
+
+
+def test_status_reflects_api_key(tmp_path: Path) -> None:
+    s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
+    assert s.status() == {
+        "authenticated": True,
+        "app_id": "APP",
+        "source": "api_key (KHDP_TOKEN env)",
+    }
+
+
+def test_resolve_auth_explicit_oauth_ignores_api_key(
+    tmp_path: Path,
+) -> None:
+    """`auth='oauth'` must NOT use the api_key fallback."""
+    s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
+    # api_key is set, but explicit `oauth` should require the PKCE cache.
+    with pytest.raises(AuthError):
+        s.authed_request("GET", "/open/datasets", auth="oauth")

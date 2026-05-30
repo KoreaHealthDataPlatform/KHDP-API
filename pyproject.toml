@@ -43,10 +43,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/KoreaHealthDataPlatform/KHDPConnector"
-Repository = "https://github.com/KoreaHealthDataPlatform/KHDPConnector"
-Issues = "https://github.com/KoreaHealthDataPlatform/KHDPConnector/issues"
-Documentation = "https://github.com/KoreaHealthDataPlatform/KHDPConnector#readme"
+Homepage = "https://github.com/KoreaHealthDataPlatform/khdp-api"
+Repository = "https://github.com/KoreaHealthDataPlatform/khdp-api"
+Issues = "https://github.com/KoreaHealthDataPlatform/khdp-api/issues"
+Documentation = "https://github.com/KoreaHealthDataPlatform/khdp-api#readme"
 
 [project.scripts]
 khdp = "khdp.cli:main"

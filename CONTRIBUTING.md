@@ -7,8 +7,8 @@ focused PRs.
 ## Local setup
 
 ```bash
-git clone https://github.com/KoreaHealthDataPlatform/KHDPConnector.git
-cd KHDPConnector
+git clone https://github.com/KoreaHealthDataPlatform/khdp-api.git
+cd khdp-api
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e '.[dev,keyring]'
 ```

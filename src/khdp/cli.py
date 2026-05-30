@@ -77,8 +77,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_api.add_argument("--data", help="JSON body string")
     p_api.add_argument(
-        "--auth", choices=["auto", "bearer", "app-key", "api-key"], default="auto",
-        help="credential to use (default auto: logged-in user, else App Key/API key)",
+        "--auth", choices=["auto", "app-key", "api-key", "oauth"], default="auto",
+        help="credential to use (default auto: api-key → oauth (cached) → app-key)",
     )
     p_api.set_defaults(func=_cmd_api)
 

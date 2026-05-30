@@ -13,7 +13,7 @@ Follows the [agents.md](https://agents.md) convention.
   authenticated tools.
 
 For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors) see
-[REST_API.md](./REST_API.md). This file is about *driving the connector*.
+[docs/REST_API.md](./docs/REST_API.md). This file is about *driving the connector*.
 
 ---
 
@@ -25,9 +25,10 @@ For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors) see
    for the PKCE flow; never try to collect credentials yourself.
 3. If `is_expired=true` and `has_refresh_token=true`, call `khdp_auth_refresh`
    (or `khdp refresh`).
-4. For **public-dataset / headless** work, no login is needed — set
-   `KHDP_APP_SECRET` (or `KHDP_API_KEY`) and call with `auth="app_key"`
-   (or `"api_key"`).
+4. For **public-dataset / headless** work, no PKCE login is needed:
+   - set `KHDP_TOKEN=khdp_pat_…` (issued from KHDP web UI Settings →
+     Account → API Token) and call with `auth="api_key"`, **or**
+   - set `KHDP_APP_SECRET` and call with `auth="app_key"`.
 5. Make KHDP calls via `khdp_api_request` (MCP) / `khdp api …` (CLI), or
    the typed subcommands (`khdp datasets …`, `khdp submissions …`).
 6. Treat all dataset content as PHI-equivalent (see [Conventions](#conventions)).
@@ -49,8 +50,8 @@ Resolution order (highest first):
 ```toml
 # ./khdp.local.toml
 app_id   = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."   # optional: App Key auth (X-App-Id / X-App-Secret)
-# api_key    = "..."   # optional: personal API key (X-API-Key)
+# app_secret = "..."        # optional: App Key auth (X-App-Id / X-App-Secret)
+# api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
 api_base = "https://khdp.net/_api"   # default; override for staging
 ```
 
@@ -58,7 +59,7 @@ api_base = "https://khdp.net/_api"   # default; override for staging
 | --- | --- |
 | `KHDP_APP_ID` | registered app UUID |
 | `KHDP_APP_SECRET` | App Key secret → headless `X-App-Id`/`X-App-Secret` auth |
-| `KHDP_API_KEY` | personal API key → `X-API-Key` auth (backend pending) |
+| `KHDP_TOKEN` | personal API key (`khdp_pat_…`) → `Authorization: Bearer` |
 | `KHDP_API_BASE` | API base (default `https://khdp.net/_api`) |
 | `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (else derived) |
 | `KHDP_TOKEN_DIR` | where tokens are cached |
@@ -93,15 +94,20 @@ khdp submissions ...
 
 # escape hatch — any authenticated KHDP call
 khdp api METHOD PATH [--query KEY=VAL ...] [--data '<json>']
-                     [--auth {auto,bearer,app-key,api-key}]
+                     [--auth {auto,app-key,api-key,oauth}]
 
 # MCP server
 khdp mcp                   # or: khdp-mcp
 ```
 
 `<code>` alone in `datasets` commands defaults to `@latest`; pin with
-`<code>@1.0.0`. `--auth` selects the credential per call: `auto` (default —
-cached user token → App Key → API key), `bearer`, `app-key`, or `api-key`.
+`<code>@1.0.0`. `--auth` selects the credential per call:
+
+- `auto` (default) — picks **api-key → oauth (cached) → app-key**
+- `app-key` — authenticates the *app* via `X-App-Id`/`X-App-Secret`
+- `api-key` — sends the user's personal `KHDP_TOKEN` as `Authorization: Bearer`
+  (long-lived, no PKCE refresh)
+- `oauth` — sends the cached PKCE token (short-lived, refreshed transparently)
 
 CLI output is JSON on stdout; status/errors go to stderr. Exit code is
 non-zero on HTTP failure.
@@ -111,20 +117,21 @@ non-zero on HTTP failure.
 ## Python library
 
 ```python
-from khdp.session import Session
+from khdp import Session
 
 with Session.open() as s:
     s.login()                     # opens browser; or login(open_browser=printer)
     print(s.status())             # auth state
     token = s.access_token()      # valid token, auto-refresh
 
-    # user identity (Bearer)
-    r = s.authed_request("GET", "/open/datasets/KHDP-OPEN-001/latest/files")
+    # OAuth (PKCE) — cached token after `khdp login`
+    r = s.authed_request("GET", "/open/datasets/KHDP-OPEN-001/latest/files",
+                         auth="oauth")
 
-    # app identity (X-App-Id/X-App-Secret) — no user login required
+    # App Key — `X-App-Id` / `X-App-Secret`; authenticates the app
     r = s.authed_request("GET", "/open/datasets", auth="app_key")
 
-    # personal API key (X-API-Key)
+    # API Key — `Authorization: Bearer <KHDP_TOKEN>`, no PKCE refresh
     r = s.authed_request("GET", "/open/datasets", auth="api_key")
 ```
 
@@ -159,7 +166,7 @@ Tools exposed on stdio:
 | `khdp_auth_status` | — | logged in? token expiry? (no network call) |
 | `khdp_auth_refresh` | — | rotate the refresh token to extend the session |
 | `khdp_auth_logout` | — | delete locally cached tokens |
-| `khdp_api_request` | `method`, `path`, `query?`, `json?`, `auth?` | authenticated HTTP passthrough; `auth` = `auto`/`bearer`/`app_key`/`api_key` |
+| `khdp_api_request` | `method`, `path`, `query?`, `json?`, `auth?` | authenticated HTTP passthrough; `auth` = `auto`/`app_key`/`api_key`/`oauth` |
 
 `khdp_api_request` resolves a relative `path` against `KHDP_API_BASE` and
 applies the credential implied by `auth`. Use it for any KHDP endpoint that
@@ -186,7 +193,7 @@ cp -r wrappers/claude-code/skills/khdp-auth ~/.claude/skills/
 ## Calling the KHDP API
 
 Endpoint paths, payloads, scopes, and errors live in
-[REST_API.md](./REST_API.md). From an agent you reach them through
+[docs/REST_API.md](./docs/REST_API.md). From an agent you reach them through
 `khdp_api_request` / `khdp api` / the typed subcommands. Highlights:
 
 - `GET /open/datasets` — search public datasets (anonymous OK).
@@ -242,8 +249,10 @@ src/khdp/
   token_store.py    # TokenStore: keychain or 0600 JSON cache
   config.py         # Config + layered load_config()
 wrappers/           # per-agent glue: claude-code (skill), codex, gemini
-docs/               # config example
-REST_API.md         # KHDP external HTTP API reference
+docs/
+  REST_API.md       # KHDP external HTTP API reference
+  i18n-manifest.json# canonical-EN → translation map (drives i18n stale check)
+  example.khdp.local.toml
 CHANGELOG.md        # release notes
 ```
 

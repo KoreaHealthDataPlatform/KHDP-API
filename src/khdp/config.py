@@ -52,9 +52,11 @@ class Config:
     # itself (``X-App-Id`` / ``X-App-Secret``) for headless access to
     # public datasets -- no user login required.
     app_secret: str = ""
-    # Personal API key sent as ``X-API-Key``. KHDP's self-service
-    # issuance backend is not live yet; the connector only forwards
-    # whatever value is configured here.
+    # KHDP **API key** -- a personal token (``khdp_pat_*``) issued from
+    # the KHDP web UI (Settings → Account → API Token). Sent as
+    # ``Authorization: Bearer <api_key>``. Long-lived; no PKCE refresh
+    # needed. When set, the connector uses it directly -- no
+    # ``khdp login`` required. Env var: ``KHDP_TOKEN``.
     api_key: str = ""
     # Where tokens go on disk. Defaults to platform user-config dir.
     token_dir: Path = field(default_factory=lambda: Path(user_config_dir("khdp")))
@@ -86,7 +88,7 @@ def _env_overrides() -> dict[str, Any]:
         "api_base": "KHDP_API_BASE",
         "authorize_url": "KHDP_AUTHORIZE_URL",
         "app_secret": "KHDP_APP_SECRET",
-        "api_key": "KHDP_API_KEY",
+        "api_key": "KHDP_TOKEN",
     }
     out: dict[str, Any] = {}
     for key, env in mapping.items():
