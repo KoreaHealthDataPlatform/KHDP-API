@@ -2,6 +2,9 @@ name = "khdp-ai-gateway"
 main = "src/index.ts"
 compatibility_date = "2026-05-30"
 compatibility_flags = ["nodejs_compat"]
+# Pinning the account ID lets wrangler skip the /memberships lookup,
+# which the deploy API token doesn't have permission for.
+account_id = "2250c9002ae689bc5c616b9fd0795e8f"
 
 # workers.dev subdomain is on by default for local testing
 # (https://khdp-ai-gateway.<account>.workers.dev).
