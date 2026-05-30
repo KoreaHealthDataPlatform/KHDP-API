@@ -2,8 +2,9 @@
 
 Runnable code that uses the [`khdp`](https://pypi.org/project/khdp/) Python SDK against the KHDP REST API.
 
-| Script | Auth | What it shows |
+| Path | Auth | What it shows |
 | --- | --- | --- |
+| [`notebook/quickstart.ipynb`](./notebook/quickstart.ipynb) — [Open in Colab](https://colab.research.google.com/github/KoreaHealthDataPlatform/khdp-api/blob/main/examples/notebook/quickstart.ipynb) | optional | Five-section tour: install → search → detail → auth → list files → download. |
 | [`python/01_anonymous_search.py`](./python/01_anonymous_search.py) | none | Search public datasets by keyword. |
 | [`python/02_dataset_detail.py`](./python/02_dataset_detail.py) | none | Fetch metadata for a single dataset (`code` + optional `version`). |
 | [`python/03_authenticated_download.py`](./python/03_authenticated_download.py) | API token | Pick the first Open dataset matching a query and stream its files to a local directory. |
