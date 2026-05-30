@@ -59,7 +59,7 @@ Resolution order (highest first):
 app_id   = "00000000-0000-0000-0000-000000000000"
 # app_secret = "..."        # optional: App Key auth (X-App-Id / X-App-Secret)
 # api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
-api_base = "https://khdp.net/_api"   # default; override for staging
+api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
 ```
 
 | Env var | Purpose |
@@ -68,7 +68,7 @@ api_base = "https://khdp.net/_api"   # default; override for staging
 | `KHDP_APP_SECRET` | App Key secret → headless `X-App-Id`/`X-App-Secret` auth |
 | `KHDP_PAT` | personal access token (`khdp_pat_…`) → `Authorization: Bearer`. **Canonical** env var |
 | `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
-| `KHDP_API_BASE` | API base (default `https://khdp.net/_api`) |
+| `KHDP_API_BASE` | API base (default `https://khdp.ai/v1`, an alias of `https://khdp.net/_api`) |
 | `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (defaults to `https://khdp.net/external/oauth-login`) |
 | `KHDP_TOKEN_DIR` | where tokens are cached |
 | `KHDP_USE_KEYRING` | `0/false` to disable OS keychain |

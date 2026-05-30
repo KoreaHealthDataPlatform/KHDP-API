@@ -6,7 +6,8 @@ Cloudflare Worker fronting **`khdp.ai`** — the AI-agent entry point for the Ko
 | --- | --- |
 | `GET /` | Minimal landing page pointing agents at `/AGENTS.md`. |
 | `GET /AGENTS.md` | 60-second edge-cached mirror of [`AGENTS.md`](../AGENTS.md) from this repo's `main`. |
-| `ANY /v1/*` | Passthrough to the KHDP backend (`khdp.net/_api/open/*`). Auth headers + query preserved; adds `X-Request-Id`; sets permissive CORS. |
+| `ANY /v1/gpu/*` | Passthrough to the kgpu gateway (`api.kgpu.net/v1/*`). The `/gpu` segment is stripped. |
+| `ANY /v1/*` | Transparent alias of `khdp.net/_api/*` — `/v1/open/datasets`, `/v1/oauth/token`, `/v1/external/oauth-login` etc. all forward 1:1. Auth headers + query preserved; adds `X-Request-Id`; sets permissive CORS. |
 | `GET /healthz` | Liveness probe. |
 
 Bytes (dataset downloads/uploads) never transit this Worker — KHDP returns presigned URLs that the client fetches directly from the origin object store.
@@ -24,7 +25,8 @@ Try:
 ```bash
 curl http://localhost:8787/
 curl http://localhost:8787/AGENTS.md | head -5
-curl 'http://localhost:8787/v1/datasets?query=heart&limit=2'
+curl 'http://localhost:8787/v1/open/datasets?query=heart&limit=2'
+curl http://localhost:8787/v1/gpu/me           # → api.kgpu.net/v1/me
 ```
 
 ## Deploy
@@ -61,7 +63,8 @@ Re-run `npm run deploy`. Wrangler creates the custom-domain binding automaticall
 | Var | Default | Purpose |
 | --- | --- | --- |
 | `GITHUB_AGENTS_RAW` | `raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/AGENTS.md` | Source for `/AGENTS.md` proxy. Point at a tag to pin. |
-| `BACKEND_BASE` | `https://khdp.net/_api/open` | Upstream the `/v1/*` gateway forwards to. |
+| `BACKEND_BASE` | `https://khdp.net/_api` | Upstream the `/v1/*` gateway forwards to (1:1 alias). |
+| `KGPU_BASE` | `https://api.kgpu.net` | Upstream the `/v1/gpu/*` gateway forwards to (with the `/gpu` segment stripped). |
 
 No secrets are bound today. When per-call PAT introspection or token signing keys land, use `wrangler secret put <NAME>` and reference via `env.<NAME>`.
 

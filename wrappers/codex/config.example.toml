@@ -13,4 +13,4 @@ args    = ["mcp"]
 [mcp_servers.khdp.env]
 KHDP_APP_ID      = "00000000-0000-0000-0000-000000000000"
 KHDP_REDIRECT_URL = "https://example.org/khdp-cli"
-KHDP_API_BASE    = "https://khdp.net/_api"
+KHDP_API_BASE    = "https://khdp.ai/v1"

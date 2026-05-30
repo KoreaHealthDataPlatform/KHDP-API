@@ -278,7 +278,7 @@ def _cmd_pat_new(session: Session, args: argparse.Namespace) -> int:
     url = session.config.api_base.rstrip("/") + "/oauth/api-tokens"
     headers = {
         "Authorization": f"Bearer {oauth_token}",
-        "User-Agent": "khdp/0.3.0",
+        "User-Agent": "khdp/0.5.0",
     }
 
     def _post(force: bool) -> httpx.Response:

@@ -6,7 +6,7 @@
 
 **대한민국 의료 데이터 플랫폼(Korea Health Data Platform)** 개발자 인터페이스 — `curl`, Python, 또는 AI 코딩 에이전트에서 의료 연구 데이터셋을 검색·다운로드·제출할 수 있습니다.
 
-- REST API: `https://khdp.net/_api` — [docs/REST_API.md](./docs/REST_API.md) 참고.
+- REST API: `https://khdp.ai/v1` — [docs/REST_API.md](./docs/REST_API.md) 참고.
 - 익명 조회 가능. 인증(App Key / OAuth / API Token)을 통해 다운로드와 제출이 가능합니다.
 - 동일한 인증 세션이 CLI, Python 라이브러리, 그리고 Claude Code · Codex CLI · Cursor · Gemini CLI용 MCP 서버를 함께 구동합니다.
 
@@ -16,7 +16,7 @@
 
 ### 1. curl
 ```bash
-curl 'https://khdp.net/_api/open/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.ai/v1/open/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python (`khdp` SDK)
@@ -46,7 +46,7 @@ claude mcp add khdp -- khdp-mcp
 
 AI 코딩 에이전트(Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI 등)에 KHDP를 다루게 하시려면 아래 프롬프트를 그대로 붙여넣으세요:
 
-> https://github.com/KoreaHealthDataPlatform/khdp-api/blob/main/AGENTS.md 를 읽고 KHDP API 사용 지침을 그대로 따라주세요. 인증이 필요하면 진행 전에 **OAuth (브라우저 로그인)** 와 **PAT (개인 액세스 토큰)** 중 어느 쪽을 선호하는지 저에게 물어봐 주세요.
+> https://khdp.ai/AGENTS.md 를 읽고 KHDP API 사용 지침을 그대로 따라주세요. 인증이 필요하면 진행 전에 **OAuth (브라우저 로그인)** 와 **PAT (개인 액세스 토큰)** 중 어느 쪽을 선호하는지 저에게 물어봐 주세요.
 
 에이전트는 [`AGENTS.md`](./AGENTS.md) 를 읽어 `khdp` 설치, 인증 경로 선택, API 호출, 에러 처리, 데이터셋의 PHI-equivalent 취급까지 안내받습니다.
 
@@ -79,7 +79,7 @@ CLI · SDK · MCP에서 모두 사용 가능한 3가지 인증 방식.
 app_id     = "00000000-0000-0000-0000-000000000000"
 # app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # 개인 API 토큰
-api_base   = "https://khdp.net/_api"
+api_base   = "https://khdp.ai/v1"
 ```
 
 또는 환경변수: `KHDP_APP_ID`, `KHDP_APP_SECRET`, `KHDP_TOKEN`.

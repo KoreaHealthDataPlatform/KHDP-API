@@ -20,13 +20,19 @@ wrapper over this API (CLI + Python library + MCP server); see
 
 | Environment | Base URL |
 | --- | --- |
-| Production | `https://khdp.net/_api` |
+| Production (recommended) | `https://khdp.ai/v1` |
+| Production (legacy alias) | `https://khdp.net/_api` |
 | Test | (ask the KHDP ops team) |
+
+`https://khdp.ai/v1/*` is a Cloudflare-fronted gateway that forwards 1:1
+to `https://khdp.net/_api/*`. Either URL works for every endpoint listed
+below; the `.ai` host is the canonical one and the entry point AI agents
+are pointed at.
 
 All paths below are relative to the base URL. Examples assume:
 
 ```bash
-export BASE_URL="https://khdp.net/_api"
+export BASE_URL="https://khdp.ai/v1"
 ```
 
 ---

@@ -7,6 +7,31 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-30
+
+### Changed
+- **`DEFAULT_API_BASE` is now `https://khdp.ai/v1`** — the new
+  AI-agent gateway (Cloudflare Worker, free tier) at <https://khdp.ai>.
+  The Worker forwards `/v1/*` 1:1 to the existing
+  `https://khdp.net/_api/*` backend, so all existing paths
+  (`/open/datasets`, `/oauth/token`, `/external/oauth-login`, …) keep
+  working unchanged. Users who explicitly set `KHDP_API_BASE` keep
+  their value; only the implicit default changes.
+- User-Agent bumped to `khdp/0.5.0` (CLI + `khdp pat new`).
+- The agent-bootstrap prompt in all five language READMEs now points
+  to `https://khdp.ai/AGENTS.md` (Cloudflare-fronted mirror) instead of
+  the GitHub raw URL.
+
+### Added
+- `worker/` directory housing the `khdp-ai-gateway` Cloudflare Worker
+  that serves <https://khdp.ai> (landing + `/AGENTS.md` proxy +
+  `/v1/*` passthrough + `/healthz`). Auto-deploys on push to `main`.
+- **`/v1/gpu/*` route** on the gateway → `api.kgpu.net/v1/*` (kgpu
+  gateway on AWS auroc, brand-aligned URL). The `/gpu` segment is
+  stripped; everything else (auth headers, query, body) passes
+  through unchanged. Bytes for shell/exec stay on kgpu's existing
+  SSH bastion at `ssh.kgpu.net:2222`.
+
 ## [0.4.0] - 2026-05-30
 
 ### Changed

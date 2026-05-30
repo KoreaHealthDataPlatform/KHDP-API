@@ -40,7 +40,7 @@ resulting cached token thereafter.
    `khdp_auth_refresh` before further calls.
 4. Use `khdp_api_request` for any KHDP endpoint that does not yet
    have a dedicated MCP tool. Path is relative to `KHDP_API_BASE`
-   (default `https://khdp.net/_api`).
+   (default `https://khdp.ai/v1`).
 
 ## Conventions
 

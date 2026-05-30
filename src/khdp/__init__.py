@@ -2,7 +2,7 @@
 
 # __version__ is defined first so submodules can ``from khdp import
 # __version__`` without a circular import.
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from khdp.config import Config, load_config
 from khdp.oauth import AuthError, KhdpAuthClient, OAuthError, TokenSet
