@@ -6,6 +6,7 @@ __version__ = "0.3.0"
 
 from khdp.config import Config, load_config
 from khdp.oauth import AuthError, KhdpAuthClient, OAuthError, TokenSet
+from khdp.session import Session
 from khdp.token_store import TokenStore
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "Config",
     "KhdpAuthClient",
     "OAuthError",
+    "Session",
     "TokenSet",
     "TokenStore",
     "__version__",

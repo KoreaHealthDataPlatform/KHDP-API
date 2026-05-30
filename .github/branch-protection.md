@@ -2,7 +2,7 @@
 
 These settings are GitHub repository configuration, not files. Apply
 them via **Settings → Branches → Add rule** on
-<https://github.com/KoreaHealthDataPlatform/KHDPConnector>.
+<https://github.com/KoreaHealthDataPlatform/khdp-api>.
 
 ## `main` branch rule
 
@@ -29,7 +29,7 @@ them via **Settings → Branches → Add rule** on
 If you have admin scope and `gh` 2.40+:
 
 ```bash
-gh api -X PUT repos/KoreaHealthDataPlatform/KHDPConnector/branches/main/protection \
+gh api -X PUT repos/KoreaHealthDataPlatform/khdp-api/branches/main/protection \
   -F required_status_checks.strict=true \
   -F required_status_checks.contexts[]='test (ubuntu-latest, 3.10)' \
   -F required_status_checks.contexts[]='test (ubuntu-latest, 3.11)' \

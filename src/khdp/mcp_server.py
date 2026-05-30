@@ -105,6 +105,17 @@ _TOOLS: list[dict[str, Any]] = [
                 "json": {
                     "description": "JSON body for POST/PUT/PATCH.",
                 },
+                "auth": {
+                    "type": "string",
+                    "enum": ["auto", "app_key", "api_key", "oauth"],
+                    "description": (
+                        "Credential to use. 'auto' (default) picks: "
+                        "api_key (KHDP_TOKEN env) → oauth (cached PKCE) "
+                        "→ app_key. 'app_key' sends X-App-Id/X-App-Secret; "
+                        "'api_key' sends the configured KHDP API token as "
+                        "Bearer; 'oauth' uses the cached PKCE token."
+                    ),
+                },
             },
             "additionalProperties": False,
         },
@@ -151,7 +162,8 @@ def _dispatch(session: Session, name: str, arguments: dict[str, Any]) -> dict[st
             path = arguments["path"]
             query = arguments.get("query") or None
             body = arguments.get("json")
-            resp = session.authed_request(method, path, params=query, json=body)
+            auth = arguments.get("auth") or "auto"
+            resp = session.authed_request(method, path, params=query, json=body, auth=auth)
             try:
                 data: object = resp.json()
             except ValueError:

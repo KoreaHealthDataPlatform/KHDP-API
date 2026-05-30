@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "KHDP connector. CLI + MCP server for the Korea Health Data Platform with wrappers for Claude Code, OpenAI Codex, and Gemini."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = { text = "MIT" }
 authors = [
     { name = "Korea Health Data Platform", email = "vital@snu.ac.kr" },
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Healthcare Industry",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -43,10 +43,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/KoreaHealthDataPlatform/KHDPConnector"
-Repository = "https://github.com/KoreaHealthDataPlatform/KHDPConnector"
-Issues = "https://github.com/KoreaHealthDataPlatform/KHDPConnector/issues"
-Documentation = "https://github.com/KoreaHealthDataPlatform/KHDPConnector#readme"
+Homepage = "https://github.com/KoreaHealthDataPlatform/khdp-api"
+Repository = "https://github.com/KoreaHealthDataPlatform/khdp-api"
+Issues = "https://github.com/KoreaHealthDataPlatform/khdp-api/issues"
+Documentation = "https://github.com/KoreaHealthDataPlatform/khdp-api#readme"
 
 [project.scripts]
 khdp = "khdp.cli:main"

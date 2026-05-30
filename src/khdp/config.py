@@ -31,12 +31,11 @@ else:  # pragma: no cover
 # KHDP central API base — observed at https://khdp.net/_api.
 DEFAULT_API_BASE = "https://khdp.net/_api"
 
-# 브라우저가 PKCE 로그인 시 방문하는 KHDP 웹 URL.
+# Browser destination during the PKCE login.
 DEFAULT_AUTHORIZE_URL = "https://khdp.net/external/oauth-login"
 
-# KHDP-registered "khdp CLI" public app. PKCE 라 client_secret 는 없음.
-# 사용자가 KHDP_APP_ID env / khdp.local.toml 로 본인 app 을 지정하지 않으면
-# 이 공식 CLI app 으로 PKCE 로그인 한다.
+# KHDP-registered public CLI app (PKCE, no client_secret). Used unless
+# the user overrides via KHDP_APP_ID env or khdp.local.toml.
 DEFAULT_CLI_APP_ID = "d915a48e-18ba-4f53-8b15-c17c1a34203f"
 
 
@@ -44,11 +43,6 @@ DEFAULT_CLI_APP_ID = "d915a48e-18ba-4f53-8b15-c17c1a34203f"
 class Config:
     """Resolved configuration for the connector."""
 
-    # KHDP app registration. ``app_id`` is a UUID issued by KHDP at app
-    # registration time. ``redirect_url`` is the URL allowlisted for the
-    # app; for the PKCE Loopback flow the CLI uses
-    # ``http://127.0.0.1:<dynamic-port>/callback`` and the KHDP backend
-    # matches IP-literal loopbacks ignoring port (RFC 8252 §7.3).
     app_id: str = DEFAULT_CLI_APP_ID
     redirect_url: str = ""
     # KHDP API base. Override for staging / on-prem deployments.
@@ -56,6 +50,16 @@ class Config:
     # KHDP web URL the user's browser is sent to during PKCE login.
     # Default points at production KHDP; override for staging / on-prem.
     authorize_url: str = DEFAULT_AUTHORIZE_URL
+    # App Key secret. Paired with ``app_id`` it authenticates as the app
+    # itself (``X-App-Id`` / ``X-App-Secret``) for headless access to
+    # public datasets -- no user login required.
+    app_secret: str = ""
+    # KHDP **API key** -- a personal token (``khdp_pat_*``) issued from
+    # the KHDP web UI (Settings → Account → API Token). Sent as
+    # ``Authorization: Bearer <api_key>``. Long-lived; no PKCE refresh.
+    # Populated from ``KHDP_PAT`` (canonical) or ``KHDP_TOKEN`` (legacy
+    # alias) env vars, or ``api_key`` in a config TOML.
+    api_key: str = ""
     # Where tokens go on disk. Defaults to platform user-config dir.
     token_dir: Path = field(default_factory=lambda: Path(user_config_dir("khdp")))
     # Use OS keychain via the optional ``keyring`` extra when available.
@@ -85,11 +89,17 @@ def _env_overrides() -> dict[str, Any]:
         "redirect_url": "KHDP_REDIRECT_URL",
         "api_base": "KHDP_API_BASE",
         "authorize_url": "KHDP_AUTHORIZE_URL",
+        "app_secret": "KHDP_APP_SECRET",
     }
     out: dict[str, Any] = {}
     for key, env in mapping.items():
         if (val := os.environ.get(env)) is not None:
             out[key] = val
+    # PAT env vars: KHDP_PAT (canonical) wins, with KHDP_TOKEN kept as a
+    # legacy alias so existing setups keep working.
+    pat = os.environ.get("KHDP_PAT") or os.environ.get("KHDP_TOKEN")
+    if pat is not None:
+        out["api_key"] = pat
     if (token_dir := os.environ.get("KHDP_TOKEN_DIR")) is not None:
         out["token_dir"] = Path(token_dir).expanduser()
     if (use_kr := os.environ.get("KHDP_USE_KEYRING")) is not None:

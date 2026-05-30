@@ -133,6 +133,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="query parameter (repeatable)",
     )
     p_api.add_argument("--data", help="JSON body string")
+    p_api.add_argument(
+        "--auth", choices=["auto", "app-key", "api-key", "oauth"], default="auto",
+        help="credential to use (default auto: api-key → oauth (cached) → app-key)",
+    )
     p_api.set_defaults(func=_cmd_api)
 
     sub.add_parser("mcp", help="run the KHDP MCP server on stdio").set_defaults(func=_cmd_mcp)
@@ -217,14 +221,37 @@ def _cmd_pat_set(session: Session, args: argparse.Namespace) -> int:
 
 def _cmd_pat_status(session: Session, _args: argparse.Namespace) -> int:
     env_pat = os.environ.get(_PAT_ENV)
+    env_token_alias = os.environ.get("KHDP_TOKEN")
     stored = session.store.load_pat()
+    cfg_api_key = session.config.api_key
+    # `config.api_key` is filled from KHDP_PAT > KHDP_TOKEN > TOML
+    # `api_key`. If no env var is set but `cfg_api_key` is present, it
+    # came from TOML.
+    cfg_from_toml = cfg_api_key and not (env_pat or env_token_alias)
     active_source: str | None = None
     if env_pat:
-        active_source = "env"
+        active_source = "env (KHDP_PAT)"
+    elif env_token_alias:
+        active_source = "env (KHDP_TOKEN, legacy alias)"
+    elif cfg_from_toml:
+        active_source = "config (TOML)"
     elif stored:
         active_source = "store"
     _emit({
-        "env": {"set": bool(env_pat), "prefix": env_pat[:14] if env_pat else None},
+        "env": {
+            "KHDP_PAT": {
+                "set": bool(env_pat),
+                "prefix": env_pat[:14] if env_pat else None,
+            },
+            "KHDP_TOKEN": {
+                "set": bool(env_token_alias),
+                "prefix": env_token_alias[:14] if env_token_alias else None,
+            },
+        },
+        "config_toml": {
+            "set": bool(cfg_from_toml),
+            "prefix": cfg_api_key[:14] if cfg_from_toml else None,
+        },
         "store": {"set": bool(stored), "prefix": stored[:14] if stored else None},
         "active_source": active_source,
     })
@@ -324,6 +351,7 @@ def _cmd_api(session: Session, args: argparse.Namespace) -> int:
     body = json.loads(args.data) if args.data else None
     resp = session.authed_request(
         args.method, args.path, params=params or None, json=body,
+        auth=args.auth.replace("-", "_"),
     )
     print(f"[khdp] {resp.status_code} {resp.reason_phrase}", file=sys.stderr)
     try:
@@ -345,6 +373,8 @@ def _cmd_config(session: Session, _args: argparse.Namespace) -> int:
         "app_id": cfg.app_id or None,
         "api_base": cfg.api_base,
         "authorize_url": cfg.authorize_url or None,
+        "has_app_secret": bool(cfg.app_secret),
+        "has_api_key": bool(cfg.api_key),
         "token_dir": str(cfg.token_dir),
     })
     return 0

@@ -12,7 +12,17 @@ server (see `config.example.toml` next to this file) exposes:
 - `khdp_auth_status`  — check before doing anything else
 - `khdp_auth_refresh` — rotate the refresh token to extend the session
 - `khdp_auth_logout`  — delete locally cached tokens
-- `khdp_api_request`  — authenticated HTTP passthrough
+- `khdp_api_request`  — authenticated HTTP passthrough; optional `auth` arg
+  (`auto` | `app_key` | `api_key` | `oauth`) picks the credential
+
+**Skip PKCE when appropriate.**
+- `KHDP_TOKEN=khdp_pat_…` (issued from KHDP Settings → Account → API
+  Token) → pass `auth="api_key"`. Sent as `Authorization: Bearer`,
+  long-lived, no refresh dance. Best for AI tools / scripts that act as
+  the user.
+- `KHDP_APP_SECRET=…` → pass `auth="app_key"`. Sent as
+  `X-App-Id`/`X-App-Secret`, authenticates the *app*. Best for headless
+  public-dataset sync, no user identity carried.
 
 There is **no** `khdp_auth_login` MCP tool by design. PKCE login
 requires a browser session for KHDP login and consent, which must run

@@ -7,16 +7,6 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-05-29
-
-### Added (0.3.0 추가분 — PAT + 공식 CLI app 내장)
-- **공식 KHDP CLI app 기본 내장** — `Config.app_id` 와 `authorize_url`
-  의 디폴트로 KHDP-registered `d915a48e-...c1a34203f` (PKCE 공개 app)
-  과 `https://khdp.net/external/oauth-login` 가 박혀 있어 추가 설정
-  없이 바로 `khdp login` 가능. 본인 app / staging 은 env (`KHDP_APP_ID`,
-  `KHDP_AUTHORIZE_URL`) 또는 `khdp.local.toml` 로 override.
-- `khdp config` 출력에 `authorize_url` 포함.
-
 ### Changed
 - **Login is now OAuth 2.0 Authorization Code with PKCE** (RFC 7636)
   using a loopback redirect (RFC 8252 §7.3). The previous
@@ -30,26 +20,40 @@ and uses [Semantic Versioning](https://semver.org/).
   to legacy `expireTime`.
 - CLI dispatch switched to `args.func` so subparser groups can attach
   their own handlers; the previous `_DISPATCH` dict is gone.
+- **`KHDP_PAT` is the canonical env var** for personal access tokens.
+  `KHDP_TOKEN` is kept as a **legacy alias** so existing setups keep
+  working; both feed into `config.api_key` via the env-resolution
+  layer, with `KHDP_PAT` winning when both are set.
 
 ### Added
-- **PAT (Personal Access Token) support** — register a token issued
-  from the KHDP web console (`khdp_pat_*`) and use it instead of the
-  PKCE OAuth tokens.
+- **Official KHDP CLI app baked in as default** — `Config.app_id` and
+  `Config.authorize_url` default to the KHDP-registered PKCE public app
+  (`d915a48e-…c1a34203f`) and `https://khdp.net/external/oauth-login`,
+  so `khdp login` works without prior configuration. Override via env
+  (`KHDP_APP_ID`, `KHDP_AUTHORIZE_URL`) or `khdp.local.toml` for staging
+  / on-prem / own-app setups.
+- `khdp config` output adds `authorize_url`, `has_app_secret`, and
+  `has_api_key`.
+- **PAT (Personal Access Token) support** — register a `khdp_pat_*`
+  token issued from the KHDP web console and use it in place of the
+  PKCE OAuth tokens. Unified with the existing `config.api_key` /
+  `KHDP_TOKEN` path so any source — env (`KHDP_PAT` / `KHDP_TOKEN`),
+  config TOML (`api_key = "khdp_pat_..."`), or the runtime store —
+  works through the same `--auth api-key` / `auto` precedence.
   - `khdp pat set <token>` / `khdp pat status` / `khdp pat clear`
     (keyring + file fallback).
-  - `KHDP_PAT` env variable; precedence: `env` → store → OAuth.
-  - PAT 가 있으면 `Session.access_token()` 이 PAT 를 그대로 반환
-    (refresh / expiry 처리 없음 — PAT 자체가 장기 토큰).
-  - `khdp status` / `khdp pat status` 에 현재 활성 인증 모드 표시.
-- **`khdp pat new`** — OAuth 로그인 한 상태에서 `POST /oauth/api-tokens`
-  를 호출해 PAT 를 발급 + 즉시 keyring/파일에 저장한다.
-  - 옵션: `--name` / `--scopes <s>` (반복) / `--expires-in-days N`.
-  - scope 생략 시 super-PAT (모든 권한 통과) 로 발급.
-  - 1인 1 PAT 정책 — 기존 active 가 있으면 서버가 409 + existingPrefix
-    응답. CLI 가 prefix 안내 후 confirm 받는다.
-  - `--force` 는 처음부터 `?force=true` 로 호출, `--yes` 는 409
-    prompt 자동 승인.
-  - `Session.oauth_access_token()` (PAT 무시, OAuth 토큰만) 추가.
+  - Precedence: `config.api_key` (env or TOML) → runtime store
+    (`khdp pat set` / `khdp pat new`) → OAuth.
+  - `khdp status` / `khdp pat status` report the active auth mode and
+    PAT source.
+- **`khdp pat new`** — issue a PAT in one step from an OAuth-logged-in
+  CLI by calling `POST /oauth/api-tokens`; the new token is saved into
+  the runtime store automatically. Options: `--name`, `--scopes <s>`
+  (repeatable; omit for a super-PAT), `--expires-in-days N`,
+  `--force` (revoke any existing active PAT instead of prompting),
+  `--yes` / `-y` (auto-confirm the 409 overwrite prompt). Adds
+  `Session.oauth_access_token()` for code paths that must not pick up a
+  PAT.
 - `khdp datasets` subcommand group:
   - `list`, `show`, `files`, `download-link`, `download`.
   - Ref form `<code>[@<version>]`; `<code>` alone defaults to `@latest`.
@@ -61,8 +65,7 @@ and uses [Semantic Versioning](https://semver.org/).
 - `khdp submissions` subcommand group — parser scaffolding only;
   per-command implementations land in a follow-up release.
 - `config.authorize_url` (`KHDP_AUTHORIZE_URL`) overrides the KHDP web
-  URL the browser is sent to during login. Default is derived from
-  `api_base` host with `/external/oauth-login`.
+  URL the browser is sent to during login.
 - `Session.request()` for anonymous-allowed endpoints — uses the
   cached bearer if present, falls back to an anonymous call otherwise.
 
