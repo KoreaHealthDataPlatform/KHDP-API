@@ -20,15 +20,22 @@ For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors) see
 ## TL;DR for an agent
 
 1. **Check auth first** — `khdp_auth_status` (MCP) or `khdp status` (CLI).
-2. If `authenticated=false` *and* the work needs user identity, **ask the
-   user to run `khdp login` in their own terminal.** Login opens a browser
-   for the PKCE flow; never try to collect credentials yourself.
+2. If `authenticated=false` *and* the work needs user identity,
+   **don't silently pick a path — ask the user which they prefer**
+   (see [Asking the user how to authenticate](#asking-the-user-how-to-authenticate)):
+   - **OAuth (browser)** — they run `khdp login`; short-lived token,
+     auto-refreshed. Best for interactive sessions.
+   - **PAT** — long-lived `khdp_pat_*` token. Issued from the KHDP web
+     UI (Settings → API Token) and saved via `khdp pat set`, **or**
+     issued directly from CLI via `khdp pat new` after one `khdp login`.
+     Best for notebooks, background work, headless setups.
+   Never try to collect credentials yourself or open a browser from a
+   tool call.
 3. If `is_expired=true` and `has_refresh_token=true`, call `khdp_auth_refresh`
    (or `khdp refresh`).
-4. For **public-dataset / headless** work, no PKCE login is needed:
-   - set `KHDP_TOKEN=khdp_pat_…` (issued from KHDP web UI Settings →
-     Account → API Token) and call with `auth="api_key"`, **or**
-   - set `KHDP_APP_SECRET` and call with `auth="app_key"`.
+4. For **bot / server / shared headless** work against public datasets,
+   set `KHDP_APP_SECRET` and call with `auth="app_key"` — this
+   authenticates the *app*, not a user.
 5. Make KHDP calls via `khdp_api_request` (MCP) / `khdp api …` (CLI), or
    the typed subcommands (`khdp datasets …`, `khdp submissions …`).
 6. Treat all dataset content as PHI-equivalent (see [Conventions](#conventions)).
@@ -57,16 +64,68 @@ api_base = "https://khdp.net/_api"   # default; override for staging
 
 | Env var | Purpose |
 | --- | --- |
-| `KHDP_APP_ID` | registered app UUID |
+| `KHDP_APP_ID` | registered app UUID (defaults to the official KHDP CLI app) |
 | `KHDP_APP_SECRET` | App Key secret → headless `X-App-Id`/`X-App-Secret` auth |
-| `KHDP_TOKEN` | personal API key (`khdp_pat_…`) → `Authorization: Bearer` |
+| `KHDP_PAT` | personal access token (`khdp_pat_…`) → `Authorization: Bearer`. **Canonical** env var |
+| `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
 | `KHDP_API_BASE` | API base (default `https://khdp.net/_api`) |
-| `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (else derived) |
+| `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (defaults to `https://khdp.net/external/oauth-login`) |
 | `KHDP_TOKEN_DIR` | where tokens are cached |
 | `KHDP_USE_KEYRING` | `0/false` to disable OS keychain |
 
 `khdp config` prints the resolved configuration (credential presence only,
 never the values).
+
+---
+
+## Asking the user how to authenticate
+
+When `khdp_auth_status` returns `authenticated=false` and the work
+genuinely needs the user's identity (anything beyond anonymous dataset
+search), **do not silently pick a path**. Surface both options to the
+user and let them choose:
+
+> KHDP needs you to authenticate. Two options:
+>
+> 1. **Browser login (OAuth / PKCE)** — run `khdp login` in your
+>    terminal. The KHDP login page opens; sign in once and the token is
+>    cached locally. Short-lived; refreshes automatically.
+>
+> 2. **Personal Access Token (PAT)** — a long-lived `khdp_pat_*` token.
+>    Two ways to get one:
+>    - **Web UI**: open <https://khdp.net> → *Settings → Account → API
+>      Token*, issue/regenerate a token, paste it back to me and I'll
+>      run `khdp pat set <token>` to save it.
+>    - **CLI**: after one `khdp login`, I'll run `khdp pat new`; the
+>      token is issued via OAuth and stored automatically (optionally
+>      with `--scopes <s>` / `--expires-in-days N`).
+>
+> Which would you like?
+
+(Phrase it in whatever language the user is conversing in.)
+
+Default recommendation when the user doesn't have a preference:
+
+- **OAuth** for interactive, one-shot sessions where the user is at
+  their terminal anyway.
+- **PAT** for notebooks, background/CI work, anything that should
+  outlive a single shell session, or remote sessions where opening a
+  local browser is awkward.
+
+After the user chooses:
+
+- **OAuth** → tell them to run `khdp login`; wait for confirmation,
+  then re-check `khdp_auth_status`.
+- **PAT (web-issued)** → ask them to paste the `khdp_pat_…` string; run
+  `khdp pat set <token>` for them.
+- **PAT (`khdp pat new`)** → after they run `khdp login`, you can run
+  `khdp pat new` (handles the `409 existingPrefix` conflict by
+  prompting; pass `--yes` to auto-confirm, `--force` to revoke without
+  prompting). The new token lands in keyring/file automatically.
+
+For one-off shell injection without persisting anything,
+`KHDP_PAT=khdp_pat_… khdp api …` works too (`KHDP_TOKEN` is the legacy
+alias for the same).
 
 ---
 
@@ -212,9 +271,11 @@ Endpoint paths, payloads, scopes, and errors live in
   connector attaches credentials for you.
 - **Treat KHDP datasets as PHI-equivalent.** Do not echo identifiers, free
   text, or full rows into the conversation/transcript. Summarize.
-- **PKCE login is the user's job.** If unauthenticated and user identity is
-  needed, instruct the user to run `khdp login`; do not solicit credentials
-  or open browsers from a tool call.
+- **Authentication is the user's choice.** If unauthenticated and user
+  identity is needed, ask which path they prefer (OAuth via `khdp login`
+  vs. PAT via web UI or `khdp pat new`) — see
+  [Asking the user how to authenticate](#asking-the-user-how-to-authenticate).
+  Do not solicit credentials or open browsers from a tool call.
 - **Read the error `message`.** KHDP returns a structured body
   (`statusCode`, `message`, `path`); a 403 almost always says exactly why
   (e.g. missing `datasets` scope, wrong auth type).

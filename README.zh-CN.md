@@ -42,6 +42,14 @@ claude mcp add khdp -- khdp-mcp
 
 > 完整指南：[docs/quickstart.zh-CN.md](./docs/quickstart.zh-CN.md)。端点参考：[docs/REST_API.md](./docs/REST_API.md)。
 
+## 从 AI 智能体使用
+
+通过 AI 编码智能体（Claude Code、OpenAI Codex、Google Antigravity、Cursor、Gemini CLI 等）使用 KHDP？将下面这段粘贴给智能体：
+
+> 请阅读 https://github.com/KoreaHealthDataPlatform/khdp-api/blob/main/AGENTS.md 并按其说明使用 KHDP API。当需要认证时，请先询问我希望使用 **OAuth（浏览器登录）** 还是 **PAT（个人访问令牌）**。
+
+智能体随后会加载 [`AGENTS.md`](./AGENTS.md) — 该文件说明如何安装 `khdp`、与你一起选择认证方式、调用 API、处理错误，并按 PHI 等同方式对待数据集内容。
+
 ## 安装
 
 ```bash
