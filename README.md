@@ -120,6 +120,7 @@ Cursor uses the same MCP server — point its `mcp.servers` config at `khdp-mcp`
 
 - [Quickstart](./docs/quickstart.en.md) — first five minutes
 - [REST API reference](./docs/REST_API.md) — endpoints, payloads, scopes, errors
+- [`examples/`](./examples/) — runnable Python scripts (anonymous search, dataset detail, authenticated download)
 - [`AGENTS.md`](./AGENTS.md) — driving the connector from a coding agent
 - [Canonical spec](https://khdp.net/docs/external-api) — official documentation site
 

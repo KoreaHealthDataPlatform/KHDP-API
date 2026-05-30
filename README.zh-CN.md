@@ -122,6 +122,7 @@ Cursor 使用相同的 MCP 服务器 — 在其 `mcp.servers` 配置中指向 `k
 
 - [Quickstart](./docs/quickstart.zh-CN.md) — 最初 5 分钟
 - [REST API 参考](./docs/REST_API.md) — 端点、负载、scope、错误（英文）
+- [`examples/`](./examples/) — 可运行的 Python 脚本（匿名检索、数据集详情、认证下载）
 - [`AGENTS.md`](./AGENTS.md) — 从编码代理驱动 connector（英文）
 - [规范说明](https://khdp.net/docs/external-api) — KHDP 官方文档站点
 

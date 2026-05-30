@@ -122,6 +122,7 @@ Cursor는 같은 MCP 서버를 사용합니다 — `mcp.servers` 설정에서 `k
 
 - [Quickstart](./docs/quickstart.ko.md) — 처음 5분
 - [REST API 레퍼런스](./docs/REST_API.md) — 엔드포인트, 페이로드, 스코프, 에러 (영어)
+- [`examples/`](./examples/) — 실행 가능한 Python 스크립트 (익명 검색, 데이터셋 상세, 인증 다운로드)
 - [`AGENTS.md`](./AGENTS.md) — 코딩 에이전트에서 connector 다루기 (영어)
 - [공식 사양](https://khdp.net/docs/external-api) — KHDP 공식 문서 사이트
 
