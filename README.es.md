@@ -122,6 +122,7 @@ Cursor usa el mismo servidor MCP — apunte su configuración `mcp.servers` a `k
 
 - [Quickstart](./docs/quickstart.es.md) — los primeros cinco minutos
 - [Referencia de la API REST](./docs/REST_API.md) — endpoints, payloads, scopes, errores (en inglés)
+- [`examples/`](./examples/) — scripts de Python ejecutables (búsqueda anónima, detalle de dataset, descarga autenticada)
 - [`AGENTS.md`](./AGENTS.md) — usar el conector desde un agente de codificación (en inglés)
 - [Especificación canónica](https://khdp.net/docs/external-api) — sitio oficial de documentación
 
