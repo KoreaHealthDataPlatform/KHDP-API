@@ -17,8 +17,8 @@ function makeCtx(): ExecutionContext {
 
 const env = {
   GITHUB_AGENTS_RAW: "https://example.org/AGENTS.md",
+  GITHUB_REST_API_RAW: "https://example.org/REST_API.md",
   BACKEND_BASE: "https://backend.example/_api",
-  KGPU_BASE: "https://kgpu.example",
 };
 
 afterEach(() => {
@@ -77,6 +77,33 @@ describe("/AGENTS.md", () => {
     expect(res.headers.get("X-Source")).toBe(env.GITHUB_AGENTS_RAW);
     const body = await res.text();
     expect(body).toContain("# AGENTS");
+  });
+});
+
+describe("/REST_API.md", () => {
+  it("proxies the REST_API mirror from GitHub raw", async () => {
+    const seen: { url: string } = { url: "" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        seen.url = typeof input === "string" ? input : input.toString();
+        return new Response("# KHDP External REST API\n", {
+          status: 200,
+          headers: { "Content-Type": "text/markdown" },
+        });
+      }),
+    );
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/REST_API.md"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(200);
+    expect(seen.url).toBe(env.GITHUB_REST_API_RAW);
+    expect(res.headers.get("Content-Type")).toMatch(/text\/markdown/);
+    expect(res.headers.get("X-Source")).toBe(env.GITHUB_REST_API_RAW);
+    const body = await res.text();
+    expect(body).toContain("# KHDP External REST API");
   });
 });
 
@@ -147,52 +174,6 @@ describe("/v1/* gateway", () => {
   });
 });
 
-describe("/v1/gpu/* gateway", () => {
-  it("forwards /v1/gpu/me to KGPU_BASE/v1/me", async () => {
-    const seen: { url: string } = { url: "" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        seen.url = typeof input === "string" ? input : input.toString();
-        return new Response(JSON.stringify({ credits: 100 }), { status: 200 });
-      }),
-    );
-    const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/gpu/me", {
-        headers: { Authorization: "Bearer kgpu_test" },
-      }),
-      env,
-      makeCtx(),
-    );
-    expect(res.status).toBe(200);
-    expect(seen.url).toBe("https://kgpu.example/v1/me");
-    expect(res.headers.get("X-Request-Id")).toBeTruthy();
-  });
-
-  it("forwards POST /v1/gpu/pods/{id}/exec with body", async () => {
-    const seen: { url: string; method: string } = { url: "", method: "" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        seen.url = typeof input === "string" ? input : input.toString();
-        seen.method = init?.method ?? "GET";
-        return new Response("{}", { status: 200 });
-      }),
-    );
-    const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/gpu/pods/abc123/exec", {
-        method: "POST",
-        body: JSON.stringify({ argv: ["nvidia-smi"] }),
-        headers: { "Content-Type": "application/json" },
-      }),
-      env,
-      makeCtx(),
-    );
-    expect(res.status).toBe(200);
-    expect(seen.method).toBe("POST");
-    expect(seen.url).toBe("https://kgpu.example/v1/pods/abc123/exec");
-  });
-});
 
 describe("unknown paths", () => {
   it("returns structured 404 JSON", async () => {
