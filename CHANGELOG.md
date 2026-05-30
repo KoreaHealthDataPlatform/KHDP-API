@@ -7,6 +7,18 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`GET /REST_API.md`** on the `khdp.ai` gateway — 60-second
+  edge-cached mirror of `docs/REST_API.md` from this repo's `main`,
+  served from the canonical `khdp.ai` host alongside `/AGENTS.md`.
+
+### Removed
+- **`/v1/gpu/*` route on the gateway.** GPU rentals are not part of
+  the `khdp.ai` surface; they continue to be served by the existing
+  kgpu gateway at `api.kgpu.net/v1/*` directly. `KGPU_BASE` env var
+  removed from `wrangler.toml`. CHANGELOG entry for 0.5.0 retained
+  for history.
+
 ## [0.5.0] - 2026-05-30
 
 ### Changed

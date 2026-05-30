@@ -26,10 +26,8 @@ enabled = true
 [vars]
 # Public configuration (no secrets here). Override per-env via wrangler
 # secrets if/when staging/prod diverge.
-GITHUB_AGENTS_RAW = "https://raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/AGENTS.md"
+GITHUB_AGENTS_RAW   = "https://raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/AGENTS.md"
+GITHUB_REST_API_RAW = "https://raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/docs/REST_API.md"
 # /v1/* is a transparent alias of khdp.net/_api/* (so /v1/open/datasets,
 # /v1/oauth/token, /v1/external/oauth-login all route correctly).
 BACKEND_BASE = "https://khdp.net/_api"
-# GPU rentals are served by the existing kgpu gateway on AWS auroc.
-# /v1/gpu/* → api.kgpu.net/v1/* (stripping the /gpu segment).
-KGPU_BASE = "https://api.kgpu.net"

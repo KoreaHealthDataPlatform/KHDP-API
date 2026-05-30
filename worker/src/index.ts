@@ -4,7 +4,7 @@
  * Surfaces:
  *  - GET  /                  → minimal landing page pointing agents at /AGENTS.md
  *  - GET  /AGENTS.md         → mirror of the GitHub-hosted AGENTS.md (60s edge cache)
- *  - ANY  /v1/gpu/*          → passthrough to the kgpu gateway (api.kgpu.net/v1/*)
+ *  - GET  /REST_API.md       → mirror of the GitHub-hosted REST_API.md (60s edge cache)
  *  - ANY  /v1/*              → passthrough to the KHDP backend (khdp.net/_api/*)
  *  - GET  /healthz           → liveness probe
  *
@@ -15,8 +15,8 @@
 
 export interface Env {
   GITHUB_AGENTS_RAW: string;
+  GITHUB_REST_API_RAW: string;
   BACKEND_BASE: string;
-  KGPU_BASE: string;
 }
 
 const HOP_BY_HOP = new Set([
@@ -44,9 +44,11 @@ export default {
     try {
       if (url.pathname === "/") return landing();
       if (url.pathname === "/healthz") return json({ ok: true, requestId });
-      if (url.pathname === "/AGENTS.md") return agentsProxy(req, env, ctx);
-      if (url.pathname === "/v1/gpu" || url.pathname.startsWith("/v1/gpu/")) {
-        return gpuGateway(req, env, requestId);
+      if (url.pathname === "/AGENTS.md") {
+        return mirrorMarkdown(req, ctx, env.GITHUB_AGENTS_RAW);
+      }
+      if (url.pathname === "/REST_API.md") {
+        return mirrorMarkdown(req, ctx, env.GITHUB_REST_API_RAW);
       }
       if (url.pathname.startsWith("/v1/")) return v1Gateway(req, env, requestId);
       return notFound(requestId);
@@ -56,24 +58,24 @@ export default {
   },
 };
 
-/** Proxy GitHub raw AGENTS.md through the edge cache. */
-async function agentsProxy(
+/** Proxy a GitHub-hosted Markdown file through the edge cache. */
+async function mirrorMarkdown(
   req: Request,
-  env: Env,
   ctx: ExecutionContext,
+  sourceUrl: string,
 ): Promise<Response> {
   const cache = caches.default;
   const cacheKey = new Request(req.url, { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const upstream = await fetch(env.GITHUB_AGENTS_RAW, {
+  const upstream = await fetch(sourceUrl, {
     cf: { cacheTtl: 60, cacheEverything: true },
   });
   const headers = new Headers({
     "Content-Type": "text/markdown; charset=utf-8",
     "Cache-Control": "public, max-age=60",
-    "X-Source": env.GITHUB_AGENTS_RAW,
+    "X-Source": sourceUrl,
     "Access-Control-Allow-Origin": "*",
   });
   const resp = new Response(upstream.body, { status: upstream.status, headers });
@@ -87,33 +89,9 @@ async function v1Gateway(
   env: Env,
   requestId: string,
 ): Promise<Response> {
-  return proxyTo(req, env.BACKEND_BASE, "/v1", requestId);
-}
-
-/** Forward /v1/gpu/* to the kgpu gateway at api.kgpu.net/v1/*. */
-async function gpuGateway(
-  req: Request,
-  env: Env,
-  requestId: string,
-): Promise<Response> {
-  return proxyTo(req, env.KGPU_BASE, "/v1/gpu", requestId, "/v1");
-}
-
-/**
- * Generic passthrough: strip `stripPrefix` from the incoming path, optionally
- * replace it with `replacePrefix`, append to `upstreamBase`, and forward.
- */
-async function proxyTo(
-  req: Request,
-  upstreamBase: string,
-  stripPrefix: string,
-  requestId: string,
-  replacePrefix: string = "",
-): Promise<Response> {
   const url = new URL(req.url);
-  const tail = url.pathname.slice(stripPrefix.length) || "/";
-  const upstreamPath = (replacePrefix + tail) || "/";
-  const target = upstreamBase.replace(/\/$/, "") + upstreamPath + url.search;
+  const tail = url.pathname.slice("/v1".length) || "/";
+  const target = env.BACKEND_BASE.replace(/\/$/, "") + tail + url.search;
 
   const headers = passthroughHeaders(req.headers);
   headers.set("X-Forwarded-Host", url.host);
