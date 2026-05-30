@@ -15,12 +15,15 @@ redirect_url = ""
 
 # App Key secret. With app_id above this enables headless `X-App-Id` /
 # `X-App-Secret` auth for public datasets (`khdp api ... --auth app-key`).
-# Prefer the KHDP_APP_SECRET env var / OS keychain over a plaintext file.
+# Authenticates the *app*, not a user. Prefer the KHDP_APP_SECRET env var
+# / OS keychain over a plaintext file.
 # app_secret = ""
 
-# Personal API key sent as `X-API-Key` (`--auth api-key`). KHDP's
-# self-service issuance backend is not live yet.
-# api_key = ""
+# Personal API key (`khdp_pat_*`) issued from KHDP Settings → Account →
+# API Token. Sent as `Authorization: Bearer <api_key>`; long-lived, no
+# PKCE refresh needed (`khdp api ... --auth api-key`). Equivalent env
+# var: KHDP_TOKEN (recommended over a plaintext file).
+# api_key = "khdp_pat_..."
 
 # Override for staging / on-prem KHDP deployments.
 api_base = "https://khdp.net/_api"

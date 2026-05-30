@@ -47,9 +47,22 @@ better/worse — they target different scenarios.
 **One-liner:** App Key sees *"what this app may see publicly"*; OAuth sees
 *"everything this app may touch as that user."*
 
-> KHDP plans a third option — a **personal API key** sent as `X-API-Key` —
-> for self-service per-user keys. The issuance/verification backend is not
-> live yet; the connector forwards a configured value as a passthrough.
+### Personal API Key (PAT)
+
+KHDP also issues a **personal API key** from the web UI (Settings → Account
+→ API Token) as a `khdp_pat_*` token. It is sent as:
+
+```
+Authorization: Bearer khdp_pat_…
+```
+
+— i.e. the *same* header as an OAuth access token, but issued out-of-band
+(one-click instead of the PKCE browser flow) and **long-lived** (no
+refresh-token dance). One key per account; regenerate replaces.
+
+Use this for AI tools / notebooks / scripts that want the user's identity
+without running the PKCE flow each session. See KHDP's
+[quickstart with AI tools](https://khdp.net/docs/external-api/quickstart-with-ai-tools).
 
 ### App Key
 
@@ -309,9 +322,9 @@ The connector wraps the OAuth (PKCE), App Key, and API Key paths. See
 
 | Goal | Raw HTTP | Connector |
 | --- | --- | --- |
-| Call as the user | `curl -H "Authorization: Bearer …"` | `khdp api GET /open/datasets/.../files` |
+| Call as the user (OAuth PKCE) | `curl -H "Authorization: Bearer <pkce_token>"` | `khdp api … --auth oauth` |
+| Call as the user (API key) | `curl -H "Authorization: Bearer khdp_pat_…"` | `khdp api … --auth api-key` (`KHDP_TOKEN`) |
 | Call as the app | `curl -H "X-App-Id: …" -H "X-App-Secret: …"` | `khdp api … --auth app-key` |
-| Call with a personal key | `curl -H "X-API-Key: …"` | `khdp api … --auth api-key` |
 | User login (PKCE) | `GET /oauth/authorize` → `POST /oauth/token` | `khdp login` (`--no-browser` for headless) |
 | Token refresh | `POST /oauth/token` (`refresh_token` grant) | `khdp refresh` (or auto on call) |
 | Public dataset search/list/detail | `GET /open/datasets[...]` | `khdp datasets list / show` |

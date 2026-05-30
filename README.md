@@ -39,18 +39,22 @@ the LLM context.
 All subsequent KHDP API calls go out with `Authorization: Bearer
 <accessToken>`.
 
-In addition to PKCE, the connector also supports the two headless
-credential types KHDP exposes — useful when no user login is appropriate
-(server-side syncs, bots, headless scripts):
+The connector supports the three KHDP credential classes:
 
-* **App Key** — `X-App-Id` / `X-App-Secret`. Set `app_secret`
+* **App Key** (authenticates the *app*, not a user) — `X-App-Id` /
+  `X-App-Secret`. Manual issuance via the KHDP team. Set `app_secret`
   (`KHDP_APP_SECRET`) alongside `app_id`.
-* **API Key** — `X-API-Key`. Set `api_key` (`KHDP_API_KEY`). *KHDP's
-  personal-API-key issuance backend is not live yet; the connector
-  forwards a configured value.*
+* **API Key** (per-user personal token, long-lived, **no PKCE refresh**) —
+  `Authorization: Bearer khdp_pat_…`. Issued from KHDP Settings → Account
+  → API Token; set `KHDP_TOKEN` and the connector uses it directly with no
+  `khdp login`.
+* **OAuth** (per-user, browser interaction, short-lived) —
+  `Authorization: Bearer <access_token>`. Obtain via `khdp login` (PKCE);
+  the connector refreshes the rotated token transparently.
 
-Pick a credential per call with `khdp api --auth {auto,bearer,app-key,api-key}`
-(default `auto`: cached user token → App Key → API key).
+Pick a credential per call with
+`khdp api --auth {auto,app-key,api-key,oauth}` — default `auto` picks:
+**api-key → oauth (cached) → app-key**.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -88,17 +92,17 @@ loopback entry on the app is enough.
 ```toml
 # ./khdp.local.toml
 app_id   = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."   # optional: enables App Key auth (X-App-Id/X-App-Secret)
-# api_key    = "..."   # optional: personal API key (X-API-Key)
-api_base = "https://khdp.net/_api"  # default; override for staging
+# app_secret = "..."        # optional: App Key auth (X-App-Id / X-App-Secret)
+# api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
+api_base   = "https://khdp.net/_api"  # default; override for staging
 ```
 
 …or:
 
 ```bash
 export KHDP_APP_ID=00000000-0000-0000-0000-000000000000
-export KHDP_APP_SECRET=...   # optional
-export KHDP_API_KEY=...      # optional
+export KHDP_APP_SECRET=...   # optional (App Key)
+export KHDP_TOKEN=khdp_pat_… # optional (API Key — from KHDP Settings → API Token)
 ```
 
 > **Don't have an `app_id` yet?** Coordinate with the KHDP team to
@@ -141,7 +145,7 @@ commit. `khdp submissions <cmd>` currently prints `not implemented yet`.
 ### Escape hatch
 ```bash
 khdp api METHOD PATH [--query KEY=VAL ...] [--data '{...}']
-                     [--auth {auto,bearer,app-key,api-key}]
+                     [--auth {auto,app-key,api-key,oauth}]
 ```
 Use this for any endpoint not covered by a verb above (debugging,
 ops-only routes, …). Output is raw JSON on stdout, status on stderr.
