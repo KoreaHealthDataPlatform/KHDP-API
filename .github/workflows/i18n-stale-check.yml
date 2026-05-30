@@ -30,6 +30,36 @@ jobs:
             }
             const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 
+            // Fork PRs run with a read-only GITHUB_TOKEN against the base
+            // repo. We can still inspect files and list comments, but
+            // addLabels / removeLabel / createComment / updateComment will
+            // 403. Treat those as best-effort so the check doesn't go red
+            // on fork PRs (this workflow is informational, not blocking).
+            const headRepoFullName = context.payload?.pull_request?.head?.repo?.full_name;
+            const baseRepoFullName = context.payload?.pull_request?.base?.repo?.full_name;
+            const isForkPR = !!headRepoFullName && headRepoFullName !== baseRepoFullName;
+            if (isForkPR) {
+              core.info(
+                `PR head is on a fork (${headRepoFullName}); ` +
+                `label and comment writes will be best-effort.`,
+              );
+            }
+
+            const tryMutate = async (label, fn) => {
+              try {
+                await fn();
+              } catch (e) {
+                if (e.status === 403) {
+                  core.info(`${label} skipped (403 — likely a fork PR with read-only token).`);
+                  return;
+                }
+                if (e.status === 404 && label.startsWith('removeLabel')) {
+                  return;  // label wasn't present, fine
+                }
+                throw e;
+              }
+            };
+
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -60,23 +90,19 @@ jobs:
 
             const ensureLabel = async (add) => {
               if (add) {
-                await github.rest.issues.addLabels({
+                await tryMutate('addLabels', () => github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.issue.number,
                   labels: [LABEL],
-                });
+                }));
               } else {
-                try {
-                  await github.rest.issues.removeLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: context.issue.number,
-                    name: LABEL,
-                  });
-                } catch (e) {
-                  if (e.status !== 404) throw e;
-                }
+                await tryMutate('removeLabel', () => github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: LABEL,
+                }));
               }
             };
 
@@ -84,12 +110,12 @@ jobs:
               await ensureLabel(false);
               if (existing) {
                 const body = `${MARKER}\nAll tracked translations are in sync with this PR's canonical changes.`;
-                await github.rest.issues.updateComment({
+                await tryMutate('updateComment', () => github.rest.issues.updateComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   comment_id: existing.id,
                   body,
-                });
+                }));
               }
               core.info('No stale translations detected.');
               return;
@@ -120,19 +146,23 @@ jobs:
 
             const body = lines.join('\n');
             if (existing) {
-              await github.rest.issues.updateComment({
+              await tryMutate('updateComment', () => github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: existing.id,
                 body,
-              });
+              }));
             } else {
-              await github.rest.issues.createComment({
+              await tryMutate('createComment', () => github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body,
-              });
+              }));
             }
             await ensureLabel(true);
             core.info(`Flagged ${stale.length} stale translation(s).`);
+            // Always log the summary so fork PRs surface it in the job output.
+            for (const s of stale) {
+              core.warning(`i18n stale: ${s.canonical} → ${s.path} (${s.label})`);
+            }
