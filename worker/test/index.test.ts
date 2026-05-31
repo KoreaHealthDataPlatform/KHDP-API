@@ -238,3 +238,57 @@ describe("unknown paths", () => {
     expect(body.errorCode).toBe("NOT_FOUND");
   });
 });
+
+describe("legacy long-form paths", () => {
+  it("/v1/open/datasets → 404 LEGACY_PATH suggesting /v1/datasets", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/open/datasets?limit=1"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as {
+      errorCode: string;
+      canonical: string;
+      message: string;
+    };
+    expect(body.errorCode).toBe("LEGACY_PATH");
+    expect(body.canonical).toBe("/v1/datasets");
+    expect(body.message).toContain("/v1/datasets");
+  });
+
+  it("/v1/open/datasets/KHDP-001/latest/files → 404 suggesting /v1/datasets/KHDP-001/latest/files", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/open/datasets/KHDP-001/latest/files"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { canonical: string };
+    expect(body.canonical).toBe("/v1/datasets/KHDP-001/latest/files");
+  });
+
+  it("/v1/open/dataset-submissions/MY-001/1.0.0/submit → 404 suggesting /v1/submissions/MY-001/1.0.0/submit", async () => {
+    const res = await worker.fetch(
+      new Request(
+        "https://khdp.ai/v1/open/dataset-submissions/MY-001/1.0.0/submit",
+      ),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { canonical: string };
+    expect(body.canonical).toBe("/v1/submissions/MY-001/1.0.0/submit");
+  });
+
+  it("/v1/external/oauth-login → 404 suggesting /v1/oauth/authorize", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/external/oauth-login"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { canonical: string };
+    expect(body.canonical).toBe("/v1/oauth/authorize");
+  });
+});

@@ -106,6 +106,10 @@ async function v1Gateway(
   const url = new URL(req.url);
   let tail = url.pathname.slice("/v1".length) || "/";
 
+  // Reject the long forms — only canonical short paths are supported.
+  const legacy = legacyHint(tail);
+  if (legacy) return legacyReject(legacy, requestId);
+
   if (tail === "/datasets" || tail.startsWith("/datasets/")) {
     tail = "/open/datasets" + tail.slice("/datasets".length);
   } else if (tail === "/submissions" || tail.startsWith("/submissions/")) {
@@ -140,6 +144,74 @@ async function v1Gateway(
     statusText: upstream.statusText,
     headers: responseHeaders,
   });
+}
+
+/**
+ * Detect legacy long-form paths and return the canonical replacement.
+ * Returns null for paths that aren't legacy (let them pass through to the
+ * normal rewrite + forwarder).
+ */
+function legacyHint(tail: string): { incoming: string; canonical: string } | null {
+  // /v1/open/datasets[/*]  →  /v1/datasets[/*]
+  if (tail === "/open/datasets" || tail.startsWith("/open/datasets/")) {
+    return {
+      incoming: "/v1" + tail,
+      canonical: "/v1/datasets" + tail.slice("/open/datasets".length),
+    };
+  }
+  // /v1/open/dataset-submissions[/*]  →  /v1/submissions[/*]
+  if (
+    tail === "/open/dataset-submissions" ||
+    tail.startsWith("/open/dataset-submissions/")
+  ) {
+    return {
+      incoming: "/v1" + tail,
+      canonical:
+        "/v1/submissions" + tail.slice("/open/dataset-submissions".length),
+    };
+  }
+  // /v1/external/oauth-login  →  /v1/oauth/authorize
+  if (tail === "/external/oauth-login") {
+    return { incoming: "/v1/external/oauth-login", canonical: "/v1/oauth/authorize" };
+  }
+  // Generic /v1/open/* and /v1/external/* are explicitly removed surface.
+  if (tail.startsWith("/open/") || tail === "/open") {
+    return { incoming: "/v1" + tail, canonical: "" };
+  }
+  if (tail.startsWith("/external/") || tail === "/external") {
+    return { incoming: "/v1" + tail, canonical: "" };
+  }
+  return null;
+}
+
+function legacyReject(
+  hint: { incoming: string; canonical: string },
+  requestId: string,
+): Response {
+  const message = hint.canonical
+    ? `${hint.incoming} is not a supported path on khdp.ai. Use ${hint.canonical} instead.`
+    : `${hint.incoming} is not a supported path on khdp.ai. See https://khdp.ai/REST_API.md for the current surface.`;
+  return new Response(
+    JSON.stringify(
+      {
+        statusCode: 404,
+        errorCode: "LEGACY_PATH",
+        message,
+        canonical: hint.canonical || null,
+        requestId,
+      },
+      null,
+      2,
+    ),
+    {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-Id": requestId,
+        "Access-Control-Allow-Origin": "*",
+      },
+    },
+  );
 }
 
 function passthroughHeaders(input: Headers): Headers {

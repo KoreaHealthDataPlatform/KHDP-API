@@ -8,6 +8,13 @@ and uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **Legacy long-form paths now hard-rejected.** The Worker returns
+  `404 LEGACY_PATH` for `/v1/open/*` and `/v1/external/*` with a
+  `canonical` field naming the short-form replacement
+  (`/v1/open/datasets` → `/v1/datasets`, `/v1/open/dataset-submissions`
+  → `/v1/submissions`, `/v1/external/oauth-login` →
+  `/v1/oauth/authorize`). Previously these slipped through the
+  passthrough; the surface is now strictly the documented short paths.
 - **Short canonical paths on `/v1/*`.** The Worker rewrites the
   AI-agent-facing surface onto nstri-back's longer legacy paths so
   external docs can use the cleaner short names. khdp.ai is not yet
