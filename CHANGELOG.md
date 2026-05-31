@@ -7,6 +7,16 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`/v1/me` and `/v1/me/balance`** — read-only account endpoints
+  exposed through the gateway. Worker rewrites `/v1/me` →
+  `/_api/member/profile` and `/v1/me/balance` → `/_api/credit/my-balance`
+  on the existing nstri-back backend; no backend changes required.
+  OpenAPI gains an `Account` tag with `Member` and `CreditBalance`
+  schemas (loose: backend may return additional fields). AGENTS.md
+  TL;DR suggests calling `/v1/me` at session start to confirm auth +
+  identify the caller.
+
 ## [0.6.0] - 2026-05-31
 
 ### Changed

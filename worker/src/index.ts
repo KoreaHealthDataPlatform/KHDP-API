@@ -115,6 +115,10 @@ async function v1Gateway(
     tail = "/open/datasets" + tail.slice("/datasets".length);
   } else if (tail === "/submissions" || tail.startsWith("/submissions/")) {
     tail = "/open/dataset-submissions" + tail.slice("/submissions".length);
+  } else if (tail === "/me") {
+    tail = "/member/profile";
+  } else if (tail === "/me/balance") {
+    tail = "/credit/my-balance";
   } else if (tail === "/oauth/authorize") {
     const target =
       env.WEB_BASE.replace(/\/$/, "") + "/external/oauth-login" + url.search;
