@@ -7,6 +7,22 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Short canonical paths on `/v1/*`.** The Worker rewrites the
+  AI-agent-facing surface onto nstri-back's longer legacy paths so
+  external docs can use the cleaner short names. khdp.ai is not yet
+  public, so no back-compat is provided for the old long forms:
+  - `/v1/datasets/*`     → backend `/_api/open/datasets/*`
+  - `/v1/submissions/*`  → backend `/_api/open/dataset-submissions/*`
+  - `/v1/oauth/authorize` → 302 redirect to `khdp.net/external/oauth-login`
+    (browser-facing login page, lives at the web root not under `/_api`).
+  `/v1/oauth/{token,refresh-token,api-tokens}` keep matching the
+  backend path 1:1.
+- `docs/REST_API.md`, `AGENTS.md`, and all five language READMEs now
+  document the short canonical paths.
+- New `WEB_BASE` env var in `worker/wrangler.toml` (`https://khdp.net`)
+  for the OAuth authorize redirect.
+
 ### Added
 - **`GET /REST_API.md`** on the `khdp.ai` gateway — 60-second
   edge-cached mirror of `docs/REST_API.md` from this repo's `main`,

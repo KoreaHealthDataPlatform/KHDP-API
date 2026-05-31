@@ -17,6 +17,7 @@ export interface Env {
   GITHUB_AGENTS_RAW: string;
   GITHUB_REST_API_RAW: string;
   BACKEND_BASE: string;
+  WEB_BASE: string;
 }
 
 const HOP_BY_HOP = new Set([
@@ -83,14 +84,38 @@ async function mirrorMarkdown(
   return resp;
 }
 
-/** Forward /v1/* to the KHDP backend, preserving auth and query. */
+/** Forward /v1/* to the KHDP backend, preserving auth and query.
+ *
+ * The external surface uses short, agent-friendly canonical paths;
+ * the Worker rewrites them onto the legacy nstri-back routes:
+ *
+ *   /v1/datasets/*           → /_api/open/datasets/*
+ *   /v1/submissions/*        → /_api/open/dataset-submissions/*
+ *   /v1/oauth/authorize      → 302 redirect to WEB_BASE/external/oauth-login
+ *                              (browser-facing OAuth/PKCE login page, lives
+ *                              at the web root, not under /_api)
+ *
+ * Everything else under /v1 (e.g. /oauth/token, /oauth/refresh-token,
+ * /oauth/api-tokens) already matches the backend path 1:1.
+ */
 async function v1Gateway(
   req: Request,
   env: Env,
   requestId: string,
 ): Promise<Response> {
   const url = new URL(req.url);
-  const tail = url.pathname.slice("/v1".length) || "/";
+  let tail = url.pathname.slice("/v1".length) || "/";
+
+  if (tail === "/datasets" || tail.startsWith("/datasets/")) {
+    tail = "/open/datasets" + tail.slice("/datasets".length);
+  } else if (tail === "/submissions" || tail.startsWith("/submissions/")) {
+    tail = "/open/dataset-submissions" + tail.slice("/submissions".length);
+  } else if (tail === "/oauth/authorize") {
+    const target =
+      env.WEB_BASE.replace(/\/$/, "") + "/external/oauth-login" + url.search;
+    return Response.redirect(target, 302);
+  }
+
   const target = env.BACKEND_BASE.replace(/\/$/, "") + tail + url.search;
 
   const headers = passthroughHeaders(req.headers);

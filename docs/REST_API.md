@@ -78,7 +78,7 @@ Two values issued by the KHDP ops team. Send both on every request.
 export KHDP_APP_ID="<app_id>"
 export KHDP_APP_SECRET="<secret_key>"
 
-curl "$BASE_URL/open/datasets?page=1&limit=10" \
+curl "$BASE_URL/datasets?page=1&limit=10" \
   -H "X-App-Id: $KHDP_APP_ID" \
   -H "X-App-Secret: $KHDP_APP_SECRET"
 ```
@@ -95,7 +95,7 @@ CLI). See the [OAuth flow](#oauth-flow-pkce) section for the full sequence.
 ```bash
 export KHDP_TOKEN="<access_token>"
 
-curl "$BASE_URL/open/datasets/<code>/<version>/files" \
+curl "$BASE_URL/datasets/<code>/<version>/files" \
   -H "Authorization: Bearer $KHDP_TOKEN"
 ```
 
@@ -139,43 +139,43 @@ the same gate:
 
 ---
 
-## Datasets — query & download (`/open/datasets/*`)
+## Datasets — query & download (`/datasets/*`)
 
 | # | Method | Path | Anon | App Key | OAuth |
 | --- | --- | --- | :---: | :---: | :---: |
-| 1 | GET | `/open/datasets` | ✅ | ✅ | ✅ |
-| 2 | GET | `/open/datasets/:code/:version` | ✅ | ✅ | ✅ |
-| 3 | GET | `/open/datasets/:code/:version/files` | ❌ | ✅ | ✅ |
-| 4 | GET | `/open/datasets/:code/:version/files/download-link` | ❌ | ✅ | ✅ |
-| 5 | GET | `/open/datasets/:code/:version/files-download-link-all` | ❌ | ✅ | ✅ |
+| 1 | GET | `/datasets` | ✅ | ✅ | ✅ |
+| 2 | GET | `/datasets/:code/:version` | ✅ | ✅ | ✅ |
+| 3 | GET | `/datasets/:code/:version/files` | ❌ | ✅ | ✅ |
+| 4 | GET | `/datasets/:code/:version/files/download-link` | ❌ | ✅ | ✅ |
+| 5 | GET | `/datasets/:code/:version/files-download-link-all` | ❌ | ✅ | ✅ |
 
 `:version` accepts a semver (`1.0.0`) or `latest`. File list/download require
 the `datasets` scope. **Download links are issued for `accessPolicy=Open`
 datasets only**; others return `400 Is Not Open Access Dataset`.
 
-### 1. `GET /open/datasets` — search / list (anonymous OK)
+### 1. `GET /datasets` — search / list (anonymous OK)
 
 Query params: `page` (default 1), `limit` (default 10, max 100), `query`
 (keyword), `type` (`ciType`, repeatable), `accessPolicy`
 (`0=Open,1=Restricted,2=Credentialed,3=ContributorReview`, repeatable).
 
 ```bash
-curl "$BASE_URL/open/datasets?query=heart&accessPolicy=0&page=1&limit=20"
+curl "$BASE_URL/datasets?query=heart&accessPolicy=0&page=1&limit=20"
 ```
 
-### 2. `GET /open/datasets/:code/:version` — detail (anonymous OK)
+### 2. `GET /datasets/:code/:version` — detail (anonymous OK)
 
 ```bash
-curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0"
-curl "$BASE_URL/open/datasets/KHDP-OPEN-001/latest"
+curl "$BASE_URL/datasets/KHDP-OPEN-001/1.0.0"
+curl "$BASE_URL/datasets/KHDP-OPEN-001/latest"
 ```
 
-### 3. `GET /open/datasets/:code/:version/files` — file list (`datasets` scope)
+### 3. `GET /datasets/:code/:version/files` — file list (`datasets` scope)
 
 Query param: `key` (directory prefix; empty = root).
 
 ```bash
-curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0/files?key=imaging/" \
+curl "$BASE_URL/datasets/KHDP-OPEN-001/1.0.0/files?key=imaging/" \
   -H "X-App-Id: $KHDP_APP_ID" -H "X-App-Secret: $KHDP_APP_SECRET"
 ```
 
@@ -184,7 +184,7 @@ curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0/files?key=imaging/" \
 Query param: `key` (required, file key).
 
 ```bash
-curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0/files/download-link?key=imaging/scan001.dcm" \
+curl "$BASE_URL/datasets/KHDP-OPEN-001/1.0.0/files/download-link?key=imaging/scan001.dcm" \
   -H "Authorization: Bearer $KHDP_TOKEN"
 # → { "url": "https://..." }
 ```
@@ -198,7 +198,7 @@ Paginates via `continueToken` (omit on first call; absent/`null` in the
 response means last page).
 
 ```bash
-curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0/files-download-link-all" \
+curl "$BASE_URL/datasets/KHDP-OPEN-001/1.0.0/files-download-link-all" \
   -H "X-App-Id: $KHDP_APP_ID" -H "X-App-Secret: $KHDP_APP_SECRET"
 ```
 
@@ -214,7 +214,7 @@ curl "$BASE_URL/open/datasets/KHDP-OPEN-001/1.0.0/files-download-link-all" \
 
 ---
 
-## Dataset submissions — create/upload/submit (`/open/dataset-submissions/*`)
+## Dataset submissions — create/upload/submit (`/submissions/*`)
 
 **OAuth only.** These touch the user's own resources; an App Key call returns
 `403 Auth type "openApiApp" is not allowed for this endpoint`. You may only
@@ -222,21 +222,21 @@ operate on your own `code`/`version`.
 
 | # | Method | Path |
 | --- | --- | --- |
-| 1 | GET | `/open/dataset-submissions/licenses` |
-| 2 | GET | `/open/dataset-submissions` |
-| 3 | POST | `/open/dataset-submissions` |
-| 4 | POST | `/open/dataset-submissions/:code/:version/files/directory` |
-| 5 | POST | `/open/dataset-submissions/:code/:version/files/presigned-url` |
-| 6 | GET | `/open/dataset-submissions/:code/:version/files` |
-| 7 | GET | `/open/dataset-submissions/:code/:version/files/download-url` |
-| 8 | DELETE | `/open/dataset-submissions/:code/:version/files` |
-| 9 | POST | `/open/dataset-submissions/:code/:version/submit` |
-| 10 | GET | `/open/dataset-submissions/:code/:version` |
+| 1 | GET | `/submissions/licenses` |
+| 2 | GET | `/submissions` |
+| 3 | POST | `/submissions` |
+| 4 | POST | `/submissions/:code/:version/files/directory` |
+| 5 | POST | `/submissions/:code/:version/files/presigned-url` |
+| 6 | GET | `/submissions/:code/:version/files` |
+| 7 | GET | `/submissions/:code/:version/files/download-url` |
+| 8 | DELETE | `/submissions/:code/:version/files` |
+| 9 | POST | `/submissions/:code/:version/submit` |
+| 10 | GET | `/submissions/:code/:version` |
 
 ### Flow
 
 ```
-POST /open/dataset-submissions                         → create (returns code, version)
+POST /submissions                         → create (returns code, version)
 POST .../:code/:version/files/directory       (option) → make a directory
 POST .../:code/:version/files/presigned-url            → get an upload URL
 PUT  <uploadUrl>                                        → upload the bytes (separate step)
@@ -257,7 +257,7 @@ semver, `code` no `/ \ : * ? " < > |` or whitespace, `summary` ≤500,
 [prep]   code_verifier  = random 43–128 chars
          code_challenge = base64url(SHA256(code_verifier))
 
-[authorize]  GET /oauth/authorize  (or KHDP's /external/oauth-login)
+[authorize]  GET /oauth/authorize
                ?client_id=<app_id>&redirect_uri=<registered>
                &code_challenge=<challenge>&code_challenge_method=S256&state=<random>
              → user logs in + consents → redirect_uri?code=...&state=...
@@ -295,7 +295,7 @@ All errors share this shape:
 
 ```json
 { "statusCode": 403, "timestamp": "2026-05-12T12:34:56.789Z",
-  "path": "/open/datasets/KHDP-OPEN-001/1.0.0/files",
+  "path": "/datasets/KHDP-OPEN-001/1.0.0/files",
   "message": "App does not have datasets scope" }
 ```
 
@@ -333,6 +333,6 @@ The connector wraps the OAuth (PKCE), App Key, and API Key paths. See
 | Call as the app | `curl -H "X-App-Id: …" -H "X-App-Secret: …"` | `khdp api … --auth app-key` |
 | User login (PKCE) | `GET /oauth/authorize` → `POST /oauth/token` | `khdp login` (`--no-browser` for headless) |
 | Token refresh | `POST /oauth/token` (`refresh_token` grant) | `khdp refresh` (or auto on call) |
-| Public dataset search/list/detail | `GET /open/datasets[...]` | `khdp datasets list / show` |
-| Public dataset files / download | `GET /open/datasets/.../files[-download-link-all]` | `khdp datasets files / download` |
+| Public dataset search/list/detail | `GET /datasets[...]` | `khdp datasets list / show` |
+| Public dataset files / download | `GET /datasets/.../files[-download-link-all]` | `khdp datasets files / download` |
 | From an AI agent | — | MCP tool `khdp_api_request` (optional `auth`) |

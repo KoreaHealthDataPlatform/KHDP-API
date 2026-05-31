@@ -16,7 +16,7 @@ La interfaz para desarrolladores de la **Korea Health Data Platform** — buscar
 
 ### 1. curl
 ```bash
-curl 'https://khdp.ai/v1/open/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.ai/v1/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python (SDK `khdp`)
@@ -25,7 +25,7 @@ curl 'https://khdp.ai/v1/open/datasets?query=heart&limit=5' | jq '.items[].code'
 from khdp import Session
 
 with Session.open() as s:
-    r = s.request("GET", "/open/datasets", params={"query": "heart", "limit": 5})
+    r = s.request("GET", "/datasets", params={"query": "heart", "limit": 5})
     print([d["code"] for d in r.json()["items"]])
 ```
 
