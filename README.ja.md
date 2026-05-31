@@ -7,7 +7,7 @@
 **Korea Health Data Platform**（韓国医療データプラットフォーム）の開発者向けインターフェイス — `curl`、Python、または任意の AI コーディングエージェントから医療研究データセットを検索・ダウンロード・提出できます。
 
 - REST API は `https://khdp.ai/v1` — <https://khdp.ai/docs> を参照。
-- 匿名閲覧が可能。認証（App Key / OAuth / API Token）によりダウンロードと提出が解放されます。
+- 匿名閲覧が可能。認証（OAuth / API Token）によりダウンロードと提出が解放されます。
 - 同一の認証セッションが CLI、Python ライブラリ、そして Claude Code・Codex CLI・Cursor・Gemini CLI 向けの MCP サーバーを動かします。
 
 > リポジトリ: `khdp-api` · Python パッケージ: `khdp`（`pip install khdp`）。
@@ -68,7 +68,6 @@ CLI・SDK・MCP の間で互換的に使える 3 種類の資格情報。
 
 | 種別 | ヘッダー | アイデンティティ | 主な用途 |
 | --- | --- | --- | --- |
-| **App Key** | `X-App-Id` + `X-App-Secret` | アプリ自身 | サーバーボット、公開カタログのミラー |
 | **OAuth (PKCE)** | `Authorization: Bearer <jwt>` | ユーザー | CLI、MCP、ユーザーの代理として動作する SaaS |
 | **API Token**（PAT） | `Authorization: Bearer khdp_pat_…` | ユーザー | ノートブック、AI エージェント（長寿命、refresh 不要） |
 
@@ -77,12 +76,11 @@ CLI・SDK・MCP の間で互換的に使える 3 種類の資格情報。
 ```toml
 # ./khdp.local.toml  （または ~/.config/khdp/config.toml）
 app_id     = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # 個人 API トークン
 api_base   = "https://khdp.ai/v1"
 ```
 
-または環境変数: `KHDP_APP_ID`、`KHDP_APP_SECRET`、`KHDP_TOKEN`。
+または環境変数: `KHDP_APP_ID`、`KHDP_TOKEN`。
 
 ## CLI
 
@@ -99,7 +97,7 @@ khdp api METHOD PATH [--query K=V ...] [--data '{...}']
                      [--auth {auto,app-key,api-key,oauth}]
 ```
 
-`--auth auto` は次の順序で資格情報を選択します: API Token → キャッシュ済み OAuth → App Key。
+`--auth auto` は次の順序で資格情報を選択します: API Token → キャッシュ済み OAuth。
 
 ## MCP サーバー
 

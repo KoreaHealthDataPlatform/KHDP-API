@@ -4,7 +4,7 @@
     "title": "KHDP Open API for AI Agents",
     "version": "1.0.0",
     "summary": "Search, download, and submit Korea Health Data Platform datasets — built for AI coding agents and external developers.",
-    "description": "Machine-readable spec for the public KHDP API served at https://khdp.ai/v1. Companion human guide for agents: https://khdp.ai/AGENTS.md\n\n## Authentication\n\nThree credential types, interchangeable across all endpoints unless noted:\n\n- **App Key** — `X-App-Id` + `X-App-Secret`. Authenticates the *app*; public dataset browsing only.\n- **OAuth (PKCE)** — `Authorization: Bearer <jwt>`. Authenticates a *user*; required for `Submissions` and PAT issuance.\n- **Personal Access Token (PAT)** — `Authorization: Bearer khdp_pat_…`. Long-lived user token issued from the KHDP web UI or `POST /oauth/api-tokens`.\n\n## Scopes\n\nThe app issuing the credential must hold the `datasets` scope for file listing and download endpoints — applies to both App Key and OAuth/PAT callers.\n\n## Error model\n\nAll errors share the `Error` schema (see *Components*). 4xx responses carry a human `message`, an optional machine-readable `errorCode`, and a `requestId` (also in the `X-Request-Id` response header) for support traces.\n\n## PAT issuance is web-only\n\nPersonal access tokens are issued from <https://khdp.net> → *Settings → Account → API Token*. There is intentionally no programmatic `POST /oauth/api-tokens` on this public surface — agents should ask the user to paste a token from the web UI.",
+    "description": "Machine-readable spec for the public KHDP API served at https://khdp.ai/v1. Companion human guide for agents: https://khdp.ai/AGENTS.md\n\n## Authentication\n\nTwo credential types, interchangeable across all endpoints unless noted:\n\n- **OAuth (PKCE)** — `Authorization: Bearer <jwt>`. Authenticates a *user*; obtained via the `/oauth/authorize` → `/oauth/token` flow.\n- **Personal Access Token (PAT)** — `Authorization: Bearer khdp_pat_…`. Long-lived user token; issued from the KHDP web UI (Settings → Account → API Token).\n\nAn app-developer credential class (`X-App-Id` + `X-App-Secret`) exists for headless/server-to-server integrations but is **not part of this public surface** — contact KHDP ops if your use case requires it.\n\n## Scopes\n\nThe credential must hold the `datasets` scope for file listing and download endpoints.\n\n## Error model\n\nAll errors share the `Error` schema (see *Components*). 4xx responses carry a human `message`, an optional machine-readable `errorCode`, and a `requestId` (also in the `X-Request-Id` response header) for support traces.\n\n## PAT issuance is web-only\n\nPersonal access tokens are issued from <https://khdp.net> → *Settings → Account → API Token*. There is intentionally no programmatic `POST /oauth/api-tokens` on this public surface — agents should ask the user to paste a token from the web UI.",
     "contact": { "name": "KHDP", "url": "https://khdp.net" },
     "license": { "name": "MIT", "identifier": "MIT" }
   },
@@ -50,7 +50,7 @@
         "summary": "Search public datasets",
         "description": "Returns a paginated list of published datasets. Anonymous access OK. File listing and downloads require auth and the `datasets` scope.",
         "operationId": "listDatasets",
-        "security": [ {}, { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "security": [ {}, { "bearerAuth": [] } ],
         "parameters": [
           { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Free-text keyword." },
           { "name": "type", "in": "query", "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true, "description": "Filter by ciType. Repeatable." },
@@ -72,7 +72,7 @@
         "summary": "Get dataset metadata",
         "description": "Full metadata for a published dataset version. Use `latest` for the most recent.",
         "operationId": "getDataset",
-        "security": [ {}, { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "security": [ {}, { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -89,7 +89,7 @@
         "summary": "List files in a dataset version",
         "description": "Requires the `datasets` scope on the calling app/credential.",
         "operationId": "listDatasetFiles",
-        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -108,7 +108,7 @@
         "summary": "Get a single presigned download URL",
         "description": "Open-policy datasets only — others return `400 Is Not Open Access Dataset`. The presigned URL is fetched directly from the origin object store; bytes do not transit the gateway.",
         "operationId": "getDownloadLink",
-        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -127,7 +127,7 @@
         "summary": "Get presigned download URLs for every file (bulk, paginated)",
         "description": "Open-policy datasets only. Cursor-paginated via `continueToken`; the last page returns `continueToken: null`.",
         "operationId": "listBulkDownloadLinks",
-        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -331,9 +331,7 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth":    { "type": "http",   "scheme": "bearer", "bearerFormat": "OAuth JWT or khdp_pat_*", "description": "Either an OAuth/PKCE access token or a personal access token (PAT)." },
-      "appIdAuth":     { "type": "apiKey", "in": "header", "name": "X-App-Id",     "description": "App identifier. Pair with X-App-Secret." },
-      "appSecretAuth": { "type": "apiKey", "in": "header", "name": "X-App-Secret", "description": "App secret. Pair with X-App-Id." }
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "OAuth JWT or khdp_pat_*", "description": "Either an OAuth/PKCE access token or a personal access token (PAT)." }
     },
     "parameters": {
       "DatasetCode":    { "name": "code",    "in": "path", "required": true, "schema": { "type": "string" }, "description": "Dataset code (e.g. `KHDP-OPEN-001`)." },

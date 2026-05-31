@@ -5,7 +5,7 @@
 The developer interface for the **Korea Health Data Platform** — search, download, and submit medical research datasets from `curl`, Python, or any AI coding agent.
 
 - REST API at `https://khdp.ai/v1` — see <https://khdp.ai/docs>.
-- Anonymous browsing works; authentication (App Key / OAuth / API Token) unlocks downloads and submissions.
+- Anonymous browsing works; authentication (OAuth / API Token) unlocks downloads and submissions.
 - One authenticated session powers the CLI, Python library, and an MCP server for Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
 > Repo: `khdp-api` · Python package: `khdp` (`pip install khdp`).
@@ -66,7 +66,6 @@ Three credential types, interchangeable across CLI, SDK, and MCP.
 
 | Type | Header(s) | Identity | Typical use |
 | --- | --- | --- | --- |
-| **App Key** | `X-App-Id` + `X-App-Secret` | the app | server bots, public catalog mirrors |
 | **OAuth (PKCE)** | `Authorization: Bearer <jwt>` | the user | CLI, MCP, SaaS acting on the user's behalf |
 | **API Token** (PAT) | `Authorization: Bearer khdp_pat_…` | the user | notebooks, AI agents (long-lived, no refresh) |
 
@@ -75,12 +74,11 @@ Get an `app_id` from the KHDP team. Personal API tokens come from *Settings → 
 ```toml
 # ./khdp.local.toml  (or ~/.config/khdp/config.toml)
 app_id     = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # personal API token
 api_base   = "https://khdp.ai/v1"
 ```
 
-Or via env: `KHDP_APP_ID`, `KHDP_APP_SECRET`, `KHDP_TOKEN`.
+Or via env: `KHDP_APP_ID`, `KHDP_TOKEN`.
 
 ## CLI
 
@@ -97,7 +95,7 @@ khdp api METHOD PATH [--query K=V ...] [--data '{...}']
                      [--auth {auto,app-key,api-key,oauth}]
 ```
 
-`--auth auto` picks: API Token → cached OAuth → App Key.
+`--auth auto` picks: API Token → cached OAuth.
 
 ## MCP server
 

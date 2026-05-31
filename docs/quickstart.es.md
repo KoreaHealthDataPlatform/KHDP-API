@@ -13,7 +13,7 @@ Esta guía complementa el [README](../README.md), que muestra cuatro puntos de e
 - Python ≥ 3.10
 - Una de las siguientes credenciales:
   - **Token personal de API** — la opción más rápida: <https://khdp.net> → *Settings → Account → API Token*. Una cadena que empieza por `khdp_pat_…`.
-  - **`app_id`** — solicítelo al equipo de KHDP si necesita login PKCE o autenticación App Key. Las apps tipo CLI deben registrar `http://127.0.0.1:*/callback` como URL de redirección permitida.
+  - **`app_id`** — solicítelo al equipo de KHDP si necesita login PKCE. Las apps tipo CLI deben registrar `http://127.0.0.1:*/callback` como URL de redirección permitida.
 - Para el paso del agente: [Claude Code](https://claude.com/claude-code) instalado.
 
 > Los tres primeros pasos funcionan sin `app_id` — basta con un token personal de API (o ninguna credencial para búsquedas públicas).
@@ -86,7 +86,7 @@ khdp datasets files    <CODE>            # listado raíz
 khdp datasets files    <CODE> --key imaging/
 ```
 
-> Si recibe `403 App does not have datasets scope`, pida al equipo de KHDP que conceda el scope `datasets` a su aplicación. Aplica tanto a App Key como a OAuth.
+> Si recibe `403 App does not have datasets scope`, pida al equipo de KHDP que conceda el scope `datasets` a su aplicación. Aplica a todos los llamadores.
 
 ## 5. Descargar archivos
 
@@ -127,7 +127,7 @@ El mismo servidor MCP da soporte a [OpenAI Codex CLI](../wrappers/codex/), [Gemi
 | --- | --- | --- |
 | `401` en cualquier llamada | cabecera incorrecta, token OAuth expirado o entorno equivocado | `khdp status`; `khdp refresh`; revise `khdp config` |
 | `403 App does not have datasets scope` | la aplicación emisora del token no tiene scope `datasets` | solicite el scope al equipo de KHDP (aplica también a OAuth) |
-| `403 Auth type "openApiApp" is not allowed` | endpoint de submission llamado con App Key | use OAuth — submissions son solo de usuario |
+| `403 Auth type "openApiApp" is not allowed` | endpoint solo-de-usuario llamado sin OAuth/PAT | use OAuth o PAT — submissions son solo de usuario |
 | `404 Dataset Not Found` | `code` incorrecto o `version` no publicada | omita la versión (por defecto `@latest`) o use `khdp datasets list` |
 | `400 Is Not Open Access Dataset` al descargar | el dataset no es Open | la API externa solo descarga datasets Open |
 | `khdp login` se queda colgado | la URL de redirección loopback no está registrada en la app | pida al equipo de KHDP que registre `http://127.0.0.1:*/callback` |

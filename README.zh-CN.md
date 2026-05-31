@@ -7,7 +7,7 @@
 **韩国健康数据平台（Korea Health Data Platform）** 的开发者接口 — 通过 `curl`、Python 或任意 AI 编码代理来检索、下载和提交医学研究数据集。
 
 - REST API 位于 `https://khdp.ai/v1` — 参见 <https://khdp.ai/docs>。
-- 匿名浏览可用；通过认证（App Key / OAuth / API Token）解锁下载和提交。
+- 匿名浏览可用；通过认证（OAuth / API Token）解锁下载和提交。
 - 同一个已认证会话同时驱动 CLI、Python 库以及面向 Claude Code、Codex CLI、Cursor、Gemini CLI 的 MCP 服务器。
 
 > 仓库：`khdp-api` · Python 包：`khdp`（`pip install khdp`）。
@@ -68,7 +68,6 @@ pipx install 'khdp[keyring]'      # + 使用操作系统密钥环存储令牌
 
 | 类型 | 头部 | 身份 | 典型用途 |
 | --- | --- | --- | --- |
-| **App Key** | `X-App-Id` + `X-App-Secret` | 应用本身 | 服务器机器人、公共目录镜像 |
 | **OAuth (PKCE)** | `Authorization: Bearer <jwt>` | 用户 | CLI、MCP、代表用户行动的 SaaS |
 | **API Token**（PAT） | `Authorization: Bearer khdp_pat_…` | 用户 | 笔记本、AI 代理（长期，无需刷新） |
 
@@ -77,12 +76,11 @@ pipx install 'khdp[keyring]'      # + 使用操作系统密钥环存储令牌
 ```toml
 # ./khdp.local.toml （或 ~/.config/khdp/config.toml）
 app_id     = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # 个人 API 令牌
 api_base   = "https://khdp.ai/v1"
 ```
 
-或通过环境变量：`KHDP_APP_ID`、`KHDP_APP_SECRET`、`KHDP_TOKEN`。
+或通过环境变量：`KHDP_APP_ID`、`KHDP_TOKEN`。
 
 ## CLI
 
@@ -99,7 +97,7 @@ khdp api METHOD PATH [--query K=V ...] [--data '{...}']
                      [--auth {auto,app-key,api-key,oauth}]
 ```
 
-`--auth auto` 按以下顺序选择：API Token → 缓存的 OAuth → App Key。
+`--auth auto` 按以下顺序选择：API Token → 缓存的 OAuth。
 
 ## MCP 服务器
 
