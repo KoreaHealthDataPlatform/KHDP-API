@@ -184,14 +184,14 @@ with Session.open() as s:
     token = s.access_token()      # valid token, auto-refresh
 
     # OAuth (PKCE) — cached token after `khdp login`
-    r = s.authed_request("GET", "/open/datasets/KHDP-OPEN-001/latest/files",
+    r = s.authed_request("GET", "/datasets/KHDP-OPEN-001/latest/files",
                          auth="oauth")
 
     # App Key — `X-App-Id` / `X-App-Secret`; authenticates the app
-    r = s.authed_request("GET", "/open/datasets", auth="app_key")
+    r = s.authed_request("GET", "/datasets", auth="app_key")
 
     # API Key — `Authorization: Bearer <KHDP_TOKEN>`, no PKCE refresh
-    r = s.authed_request("GET", "/open/datasets", auth="api_key")
+    r = s.authed_request("GET", "/datasets", auth="api_key")
 ```
 
 `Session` (in `khdp.session`) is the high-level entry point: combines the
@@ -230,7 +230,7 @@ Tools exposed on stdio:
 `khdp_api_request` resolves a relative `path` against `KHDP_API_BASE` and
 applies the credential implied by `auth`. Use it for any KHDP endpoint that
 lacks a dedicated tool — e.g.
-`path="/open/datasets/<code>/<version>/files"`.
+`path="/datasets/<code>/<version>/files"`.
 
 **There is deliberately no login tool.** PKCE login needs a browser session
 on the user's machine; that flow must not run inside an LLM tool call. The
@@ -255,12 +255,12 @@ Endpoint paths, payloads, scopes, and errors live in
 [docs/REST_API.md](./docs/REST_API.md). From an agent you reach them through
 `khdp_api_request` / `khdp api` / the typed subcommands. Highlights:
 
-- `GET /open/datasets` — search public datasets (anonymous OK).
-- `GET /open/datasets/:code/:version/files` — file list (needs the app's
+- `GET /datasets` — search public datasets (anonymous OK).
+- `GET /datasets/:code/:version/files` — file list (needs the app's
   `datasets` scope).
-- `GET /open/datasets/:code/:version/files-download-link-all` — bulk
+- `GET /datasets/:code/:version/files-download-link-all` — bulk
   presigned download URLs (Open-policy datasets only).
-- `GET /open/dataset-submissions` and friends — the user's own submissions
+- `GET /submissions` and friends — the user's own submissions
   (OAuth identity required).
 
 ---

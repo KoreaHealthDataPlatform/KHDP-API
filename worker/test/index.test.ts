@@ -19,6 +19,7 @@ const env = {
   GITHUB_AGENTS_RAW: "https://example.org/AGENTS.md",
   GITHUB_REST_API_RAW: "https://example.org/REST_API.md",
   BACKEND_BASE: "https://backend.example/_api",
+  WEB_BASE: "https://web.example",
 };
 
 afterEach(() => {
@@ -107,23 +108,29 @@ describe("/REST_API.md", () => {
   });
 });
 
-describe("/v1/* gateway", () => {
-  it("forwards /v1/open/datasets transparently to BACKEND_BASE/open/datasets", async () => {
-    const seen: { url: string; method: string } = { url: "", method: "" };
+describe("/v1/* gateway canonical aliases", () => {
+  const stubUpstream = (
+    body: object = { items: [] },
+  ): { seen: { url: string; method: string } } => {
+    const seen = { url: "", method: "" };
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         seen.url = typeof input === "string" ? input : input.toString();
         seen.method = init?.method ?? "GET";
-        return new Response(JSON.stringify({ items: [] }), {
+        return new Response(JSON.stringify(body), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }),
     );
+    return { seen };
+  };
 
+  it("/v1/datasets → /_api/open/datasets", async () => {
+    const { seen } = stubUpstream();
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/open/datasets?query=heart&limit=2"),
+      new Request("https://khdp.ai/v1/datasets?query=heart&limit=2"),
       env,
       makeCtx(),
     );
@@ -135,20 +142,65 @@ describe("/v1/* gateway", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
-  it("forwards /v1/oauth/token to BACKEND_BASE/oauth/token (no /open prefix)", async () => {
-    const seen: { url: string; method: string } = { url: "", method: "" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        seen.url = typeof input === "string" ? input : input.toString();
-        seen.method = init?.method ?? "GET";
-        return new Response(JSON.stringify({ access_token: "X" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }),
+  it("/v1/datasets/KHDP-001/latest/files → /_api/open/datasets/KHDP-001/latest/files", async () => {
+    const { seen } = stubUpstream();
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files?key=imaging/"),
+      env,
+      makeCtx(),
     );
+    expect(seen.url).toBe(
+      "https://backend.example/_api/open/datasets/KHDP-001/latest/files?key=imaging/",
+    );
+  });
+
+  it("/v1/submissions → /_api/open/dataset-submissions", async () => {
+    const { seen } = stubUpstream();
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/submissions", {
+        method: "POST",
+        body: JSON.stringify({ title: "X" }),
+        headers: { "Content-Type": "application/json" },
+      }),
+      env,
+      makeCtx(),
+    );
+    expect(seen.method).toBe("POST");
+    expect(seen.url).toBe("https://backend.example/_api/open/dataset-submissions");
+  });
+
+  it("/v1/submissions/{code}/{ver}/submit → /_api/open/dataset-submissions/{code}/{ver}/submit", async () => {
+    const { seen } = stubUpstream();
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/submissions/MY-001/1.0.0/submit", {
+        method: "POST",
+      }),
+      env,
+      makeCtx(),
+    );
+    expect(seen.url).toBe(
+      "https://backend.example/_api/open/dataset-submissions/MY-001/1.0.0/submit",
+    );
+  });
+
+  it("/v1/oauth/authorize → 302 redirect to WEB_BASE/external/oauth-login", async () => {
     const res = await worker.fetch(
+      new Request(
+        "https://khdp.ai/v1/oauth/authorize?client_id=x&code_challenge=y",
+        { redirect: "manual" },
+      ),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(
+      "https://web.example/external/oauth-login?client_id=x&code_challenge=y",
+    );
+  });
+
+  it("/v1/oauth/token → /_api/oauth/token (passthrough, unchanged)", async () => {
+    const { seen } = stubUpstream({ access_token: "X" });
+    await worker.fetch(
       new Request("https://khdp.ai/v1/oauth/token", {
         method: "POST",
         body: JSON.stringify({ grant_type: "refresh_token" }),
@@ -157,9 +209,8 @@ describe("/v1/* gateway", () => {
       env,
       makeCtx(),
     );
-    expect(res.status).toBe(200);
-    expect(seen.url).toBe("https://backend.example/_api/oauth/token");
     expect(seen.method).toBe("POST");
+    expect(seen.url).toBe("https://backend.example/_api/oauth/token");
   });
 
   it("returns 204 + CORS headers on preflight OPTIONS", async () => {
