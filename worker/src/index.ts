@@ -338,9 +338,9 @@ const LANDING_HTML = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>KHDP — for AI agents</title>
+<title>Open KHDP API for AI Agents</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Korea Health Data Platform — a small REST surface for AI agents and researchers.">
+<meta name="description" content="Open KHDP API for AI Agents — a small REST surface over the Korea Health Data Platform.">
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -352,14 +352,14 @@ const LANDING_HTML = `<!doctype html>
     -webkit-font-smoothing: antialiased;
   }
   main {
-    max-width: 560px;
+    max-width: 620px;
     margin: 0 auto;
     padding: clamp(3rem, 12vh, 9rem) 1.5rem 4rem;
   }
   h1 {
-    font-size: clamp(2.5rem, 7vw, 3.5rem);
+    font-size: clamp(2.25rem, 6.5vw, 3.25rem);
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1.08;
     letter-spacing: -0.02em;
     margin: 0 0 1.25rem;
   }
@@ -414,10 +414,10 @@ const LANDING_HTML = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>KHDP<span class="sub">for AI agents</span></h1>
-  <p class="lede">A small REST surface for medical research.</p>
+  <h1>Open KHDP API<span class="sub">for AI Agents</span></h1>
+  <p class="lede">A small REST surface over the Korea Health Data Platform — datasets, submissions, OAuth — for agents and researchers.</p>
   <p class="cta">
-    <a class="btn" href="https://khdp.net">Sign in with KHDP</a>
+    <a class="btn" href="/docs">View API docs</a>
     <a class="link" href="/AGENTS.md">AGENTS.md</a>
   </p>
 </main>
