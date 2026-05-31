@@ -212,7 +212,7 @@ def _cmd_files(session: Session, args: argparse.Namespace) -> int:
             params["continueToken"] = cont
         resp = session.authed_request(
             "GET",
-            f"/datasets/{code}/{version}/files-download-link-all",
+            f"/datasets/{code}/{version}/files",
             params=params or None,
         )
         body = _try_json(resp)
@@ -238,10 +238,13 @@ def _cmd_files(session: Session, args: argparse.Namespace) -> int:
 
 def _cmd_download_link(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
+    # The Worker accepts the full key (including `/`) as a path segment;
+    # urllib quoting on the SDK side preserves `/` so the request lands
+    # at `/datasets/{c}/{v}/files/imaging/scan001.dcm` natively.
     resp = session.authed_request(
         "GET",
-        f"/datasets/{code}/{version}/files/download-link",
-        params={"key": args.key},
+        f"/datasets/{code}/{version}/files/{args.key}",
+        params=None,
     )
     body = _try_json(resp)
     if (rc := _check_response(resp, body)) is not None:
@@ -281,7 +284,7 @@ def _cmd_download(session: Session, args: argparse.Namespace) -> int:
             params["continueToken"] = cont
         resp = session.authed_request(
             "GET",
-            f"/datasets/{code}/{version}/files-download-link-all",
+            f"/datasets/{code}/{version}/files",
             params=params or None,
         )
         body = _try_json(resp)

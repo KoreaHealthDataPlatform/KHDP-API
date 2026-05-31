@@ -272,14 +272,15 @@ subcommands. Highlights:
   also carries an `archive` block; bearer-authenticated callers receive
   `archive.url` (presigned, ready to fetch), anonymous callers see only
   `archive.available`.
-- `GET /datasets/:code/:version/files-download-link-all` — flat
-  enumeration of every file with `{key, size, url}` per item, 1000 per
-  page via `continueToken` (Open-policy datasets only, `datasets`
-  scope). This is the canonical listing primitive — no separate
-  directory-mode endpoint.
+- `GET /datasets/:code/:version/files` — flat enumeration with `{key,
+  size, url}` per item, 1000 per page via `continueToken` (Open-policy
+  datasets only, `datasets` scope). REST collection.
+- `GET /datasets/:code/:version/files/:key` — single file presigned
+  URL. `:key` is the full S3 key including `/` (e.g.
+  `imaging/scan001.dcm` — no URL-encoding needed; the gateway treats
+  every path segment after `/files/` as the key). REST member.
 - **Preferred download order**: `archive.url` (one fetch, one zip) →
-  `files-download-link-all` (per-file URLs when you need partial
-  download or streaming).
+  `/files` (per-file URLs when you need partial download or streaming).
 - `GET /submissions` and friends — the user's own submissions
   (OAuth identity required).
 

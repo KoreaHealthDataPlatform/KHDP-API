@@ -8,23 +8,33 @@ and uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- **`GET /datasets/{code}/{version}/files-download-link-all`** is now
-  the canonical (and only) file-listing primitive. The OpenAPI item
-  schema now correctly includes the `size` field that the backend has
-  always returned. Description clarifies that this endpoint is a flat,
-  recursion-free S3 `ListObjectsV2` enumeration (1000 / page).
-- **SDK `khdp datasets files`** rewritten to call
-  `files-download-link-all` instead of the removed directory-mode
-  endpoint. New flags: `--prefix STR` (client-side filter) and
-  `--max-pages N`; the old `--key DIR` is gone.
+- **Files endpoints reshaped to REST-canonical collection/member**:
+  - `GET /datasets/{c}/{v}/files` — flat paginated list with `{key,
+    size, url}` per item plus an `archive` block. Replaces the
+    historical `files-download-link-all` name (which leaked the
+    implementation into the URL).
+  - `GET /datasets/{c}/{v}/files/{key}` — single file's presigned URL.
+    `{key}` is the full S3 object key, slashes and all — the gateway
+    accepts every path segment after `/files/` as the key, so
+    `/files/imaging/scan001.dcm` works directly without `%2F` encoding.
+    Replaces `files/download-link?key=`.
+  The old long forms now return `404 LEGACY_PATH` pointing at the
+  canonical replacement.
+- **OpenAPI `FileListing` schema** introduced (renaming
+  `BulkPresignedUrls`); `items[].size` is now documented (the backend
+  has always returned it).
+- **SDK `khdp datasets files`** uses `/files` and accumulates pages
+  with `continueToken`. New flags: `--prefix STR` (client-side filter)
+  and `--max-pages N`; the old `--key DIR` directory argument is gone.
+- **SDK `khdp datasets download-link --key FOO`** now hits
+  `/files/FOO` directly (no query param). `--key` flag preserved on
+  the SDK surface for now.
 
 ### Removed
-- **`GET /datasets/{code}/{version}/files`** (directory-mode listing)
-  removed from the public surface. The endpoint was only useful for UI
-  tree browsing and forced callers to recurse into `subDirs` to
-  enumerate a dataset — `files-download-link-all` covers the listing
-  use case in one paginated flat call. The Worker now returns
-  `404 LEGACY_PATH` pointing at the canonical replacement.
+- **Directory-mode dataset file listing** (the previous
+  `/datasets/{c}/{v}/files` returning `{subDirs, contents}`) is no
+  longer reachable through khdp.ai. The same path now serves the flat
+  collection.
 
 ### Added
 - **`archive` block on dataset detail responses** — when a pre-built

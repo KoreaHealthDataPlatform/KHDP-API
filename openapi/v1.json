@@ -83,31 +83,12 @@
         }
       }
     },
-    "/datasets/{code}/{version}/files/download-link": {
+    "/datasets/{code}/{version}/files": {
       "get": {
         "tags": ["Datasets"],
-        "summary": "Get a single presigned download URL",
-        "description": "Open-policy datasets only — others return `400 Is Not Open Access Dataset`. The presigned URL is fetched directly from the origin object store; bytes do not transit the gateway.",
-        "operationId": "getDownloadLink",
-        "security": [ { "bearerAuth": [] } ],
-        "parameters": [
-          { "$ref": "#/components/parameters/DatasetCode" },
-          { "$ref": "#/components/parameters/DatasetVersion" },
-          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Full file key (e.g. `imaging/scan001.dcm`)." }
-        ],
-        "responses": {
-          "200": { "description": "Presigned URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
-    "/datasets/{code}/{version}/files-download-link-all": {
-      "get": {
-        "tags": ["Datasets"],
-        "summary": "List every file (flat) with presigned download URLs",
-        "description": "Open-policy datasets only. Returns a flat, recursion-free enumeration of every file under the version, with key, size, and a presigned download URL per item — backed by S3 `ListObjectsV2`. Cursor-paginated via `continueToken` (page size 1000); the last page returns `continueToken: null`. This is the canonical way to enumerate dataset contents; there is no separate directory-mode endpoint.",
-        "operationId": "listBulkDownloadLinks",
+        "summary": "List every file in a dataset version (flat, paginated)",
+        "description": "Open-policy datasets only. Flat, recursion-free enumeration of every file under the version, with key, size, and a presigned download URL per item — backed by S3 `ListObjectsV2`. Cursor-paginated via `continueToken` (page size 1000); the last page returns `continueToken: null`. Response also carries an `archive` block mirroring the dataset detail endpoint.",
+        "operationId": "listDatasetFiles",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
@@ -115,7 +96,28 @@
           { "name": "continueToken", "in": "query", "schema": { "type": "string" }, "description": "Cursor from the previous response; omit on the first call." }
         ],
         "responses": {
-          "200": { "description": "Page of presigned URLs.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BulkPresignedUrls" } } } }
+          "200": { "description": "Page of file entries (with presigned URLs).", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FileListing" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/datasets/{code}/{version}/files/{key}": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "Get a single file's presigned download URL",
+        "description": "Open-policy datasets only — others return `400 Is Not Open Access Dataset`. The presigned URL is fetched directly from the origin object store; bytes do not transit the gateway.\n\nNote: `{key}` is the full S3 object key and almost always contains `/` characters (e.g. `imaging/scan001.dcm`). The gateway accepts every path segment after `/files/` as the key, so `GET /v1/datasets/INSPIRE/1.3/files/imaging/scan001.dcm` is the natural form. Clients that URL-encode `/` as `%2F` also work.",
+        "operationId": "getDatasetFile",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Full file key (e.g. `imaging/scan001.dcm`). May contain `/`." }
+        ],
+        "responses": {
+          "200": { "description": "Presigned URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     },
@@ -392,20 +394,22 @@
           "expiresAt": { "type": "string", "format": "date-time" }
         }
       },
-      "BulkPresignedUrls": {
+      "FileListing": {
         "type": "object",
+        "description": "One page of files for a dataset version. `items` carries `{key, size, url}` per file with a presigned download URL; `continueToken` cursors to the next page (`null` on the last). `archive` mirrors the block on the dataset detail endpoint.",
         "required": ["items"],
         "properties": {
           "items": { "type": "array", "items": {
             "type": "object",
             "required": ["key", "url"],
             "properties": {
-              "key":  { "type": "string" },
-              "size": { "type": "integer", "format": "int64", "description": "File size in bytes (S3 object size)." },
-              "url":  { "type": "string", "format": "uri" }
+              "key":  { "type": "string", "description": "Full S3 object key relative to the dataset version (e.g. `imaging/scan001.dcm`)." },
+              "size": { "type": "integer", "format": "int64", "description": "File size in bytes." },
+              "url":  { "type": "string", "format": "uri", "description": "Presigned download URL." }
             }
           } },
-          "continueToken": { "type": ["string", "null"], "description": "Cursor for the next page; `null` on the last page." }
+          "continueToken": { "type": ["string", "null"], "description": "Cursor for the next page; `null` on the last page." },
+          "archive":       { "$ref": "#/components/schemas/Archive" }
         }
       },
       "Submission": {
