@@ -48,9 +48,19 @@ def add_subparser(sub: argparse._SubParsersAction) -> None:
     p_show.add_argument("--json", action="store_true")
     p_show.set_defaults(func=_cmd_show)
 
-    p_files = sp.add_parser("files", help="list files in a dataset")
+    p_files = sp.add_parser(
+        "files",
+        help="list every file in a dataset (flat enumeration, paginated)",
+    )
     p_files.add_argument("ref")
-    p_files.add_argument("--key", default="", help="directory prefix")
+    p_files.add_argument(
+        "--prefix", default="",
+        help="client-side prefix filter on file keys (e.g. 'imaging/')",
+    )
+    p_files.add_argument(
+        "--max-pages", type=int, default=0,
+        help="stop after N pages (default: 0 = all). 1000 files / page.",
+    )
     p_files.add_argument("--json", action="store_true")
     p_files.set_defaults(func=_cmd_files)
 
@@ -148,18 +158,11 @@ def _print_dataset_list(body: Any) -> None:
         print(f"\npage {page}/{total_page}, total {total}")
 
 
-def _print_files(body: Any) -> None:
-    if not isinstance(body, dict):
-        _emit(body)
-        return
-    sub_dirs = body.get("subDirs") or []
-    contents = body.get("contents") or []
-    for d in sub_dirs:
-        print(f"D  {d.get('key', '')}")
-    for f in contents:
-        size = f.get("size", 0)
-        print(f"F  {f.get('key', '')}  ({size} bytes)")
-    if not sub_dirs and not contents:
+def _print_files(items: list[dict[str, Any]]) -> None:
+    for it in items:
+        size = int(it.get("size") or 0)
+        print(f"{it.get('key', '')}  {_fmt_size(size)}")
+    if not items:
         print("(empty)")
 
 
@@ -198,17 +201,38 @@ def _cmd_show(session: Session, args: argparse.Namespace) -> int:
 
 def _cmd_files(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
-    params = {"key": args.key} if args.key else None
-    resp = session.authed_request(
-        "GET", f"/datasets/{code}/{version}/files", params=params,
-    )
-    body = _try_json(resp)
-    if (rc := _check_response(resp, body)) is not None:
-        return rc
+    prefix: str = getattr(args, "prefix", "") or ""
+    items: list[dict[str, Any]] = []
+    cont: str | None = None
+    page = 0
+    while True:
+        page += 1
+        params: dict[str, str] = {}
+        if cont:
+            params["continueToken"] = cont
+        resp = session.authed_request(
+            "GET",
+            f"/datasets/{code}/{version}/files-download-link-all",
+            params=params or None,
+        )
+        body = _try_json(resp)
+        if (rc := _check_response(resp, body)) is not None:
+            return rc
+        page_items = body.get("items") if isinstance(body, dict) else None
+        if page_items:
+            for it in page_items:
+                if prefix and not str(it.get("key", "")).startswith(prefix):
+                    continue
+                items.append(it)
+        cont = body.get("continueToken") if isinstance(body, dict) else None
+        if not cont:
+            break
+        if args.max_pages and page >= args.max_pages:
+            break
     if args.json:
-        _emit(body)
+        _emit({"items": items, "count": len(items)})
     else:
-        _print_files(body)
+        _print_files(items)
     return 0
 
 

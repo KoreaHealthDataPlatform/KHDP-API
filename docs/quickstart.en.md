@@ -81,7 +81,7 @@ File listing requires the `datasets` scope on whichever credential you're using.
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # root listing
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > If you get `403 App does not have datasets scope`, ask the KHDP team to grant your app the `datasets` scope. This applies to all callers.

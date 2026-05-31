@@ -7,19 +7,37 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **`GET /datasets/{code}/{version}/files-download-link-all`** is now
+  the canonical (and only) file-listing primitive. The OpenAPI item
+  schema now correctly includes the `size` field that the backend has
+  always returned. Description clarifies that this endpoint is a flat,
+  recursion-free S3 `ListObjectsV2` enumeration (1000 / page).
+- **SDK `khdp datasets files`** rewritten to call
+  `files-download-link-all` instead of the removed directory-mode
+  endpoint. New flags: `--prefix STR` (client-side filter) and
+  `--max-pages N`; the old `--key DIR` is gone.
+
+### Removed
+- **`GET /datasets/{code}/{version}/files`** (directory-mode listing)
+  removed from the public surface. The endpoint was only useful for UI
+  tree browsing and forced callers to recurse into `subDirs` to
+  enumerate a dataset — `files-download-link-all` covers the listing
+  use case in one paginated flat call. The Worker now returns
+  `404 LEGACY_PATH` pointing at the canonical replacement.
+
 ### Added
-- **`archive` block on dataset detail and file-listing responses** — when
-  a pre-built zip exists for the requested version, `GET /v1/datasets/
-  {code}/{version}` and `.../files` now include an `archive` object
-  describing the download. Bearer-authenticated callers get the
-  presigned `url` (plus `expiresAt` and `sizeBytes` when the backend
-  supplies them); anonymous callers see `available: true` but no URL.
-  When no zip exists or the requested version isn't the latest
-  published, `archive` is `{ available: false, format: "zip" }`. The
-  Worker resolves `cvId` via the backend's `/dataset/code/{code}` lookup
-  and calls `/files/compress-check` and (auth-gated) `/files/compress-
-  link` in parallel with the primary request — no separate endpoint
-  needed.
+- **`archive` block on dataset detail responses** — when a pre-built
+  zip exists for the requested version, `GET /v1/datasets/{code}/
+  {version}` now includes an `archive` object describing the download.
+  Bearer-authenticated callers get the presigned `url` (plus
+  `expiresAt` and `sizeBytes` when the backend supplies them);
+  anonymous callers see `available: true` but no URL. When no zip
+  exists or the requested version isn't the latest published, `archive`
+  is `{ available: false, format: "zip" }`. The Worker resolves `cvId`
+  via the backend's `/dataset/code/{code}` lookup and calls
+  `/files/compress-check` and (auth-gated) `/files/compress-link` in
+  parallel with the primary request — no separate endpoint needed.
 - **`/v1/me` and `/v1/me/balance`** — read-only account endpoints
   exposed through the gateway. Worker rewrites `/v1/me` →
   `/_api/member/profile` and `/v1/me/balance` → `/_api/credit/my-balance`

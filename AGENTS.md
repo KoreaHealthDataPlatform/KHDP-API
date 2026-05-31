@@ -145,7 +145,7 @@ khdp config                # show resolved configuration
 # datasets (public)
 khdp datasets list [--query KW] [--policy open|restricted|...] [--page N] [--limit N] [--json]
 khdp datasets show <code>[@<version>] [--json]
-khdp datasets files <code>[@<version>] [--key PREFIX] [--json]
+khdp datasets files <code>[@<version>] [--prefix PREFIX] [--max-pages N] [--json]
 khdp datasets download-link <code>[@<version>] --key FILE
 khdp datasets download <code>[@<version>] [--out DIR] [--max-pages N] [--dry-run]
 
@@ -185,8 +185,11 @@ with Session.open() as s:
     token = s.access_token()      # valid token, auto-refresh
 
     # OAuth (PKCE) — cached token after `khdp login`
-    r = s.authed_request("GET", "/datasets/KHDP-OPEN-001/latest/files",
-                         auth="oauth")
+    r = s.authed_request(
+        "GET",
+        "/datasets/KHDP-OPEN-001/latest/files-download-link-all",
+        auth="oauth",
+    )
 
     # (Advanced) App Key — `X-App-Id` / `X-App-Secret`; authenticates the
     # app, not a user. Not part of the public surface; reserved for
@@ -233,7 +236,7 @@ Tools exposed on stdio:
 `khdp_api_request` resolves a relative `path` against `KHDP_API_BASE` and
 applies the credential implied by `auth`. Use it for any KHDP endpoint that
 lacks a dedicated tool — e.g.
-`path="/datasets/<code>/<version>/files"`.
+`path="/datasets/<code>/<version>/files-download-link-all"`.
 
 **There is deliberately no login tool.** PKCE login needs a browser session
 on the user's machine; that flow must not run inside an LLM tool call. The
@@ -264,17 +267,19 @@ you reach them through `khdp_api_request` / `khdp api` / the typed
 subcommands. Highlights:
 
 - `GET /datasets` — search public datasets (anonymous OK).
-- `GET /datasets/:code/:version/files` — file list (needs the app's
-  `datasets` scope).
-- `GET /datasets/:code/:version/files-download-link-all` — bulk
-  presigned download URLs (Open-policy datasets only).
-- **`archive`** — both `/datasets/:code/:version` and
-  `/datasets/:code/:version/files` carry an `archive` block when a
-  pre-built zip exists for the latest published version. Bearer-
-  authenticated callers receive `archive.url` (presigned, ready to
-  fetch); anonymous callers see only `archive.available`. Prefer the
-  zip over `files-download-link-all` when present — one request, one
-  download.
+- `GET /datasets/:code/:version` — dataset detail (anonymous OK). When
+  a pre-built zip exists for the latest published version the response
+  also carries an `archive` block; bearer-authenticated callers receive
+  `archive.url` (presigned, ready to fetch), anonymous callers see only
+  `archive.available`.
+- `GET /datasets/:code/:version/files-download-link-all` — flat
+  enumeration of every file with `{key, size, url}` per item, 1000 per
+  page via `continueToken` (Open-policy datasets only, `datasets`
+  scope). This is the canonical listing primitive — no separate
+  directory-mode endpoint.
+- **Preferred download order**: `archive.url` (one fetch, one zip) →
+  `files-download-link-all` (per-file URLs when you need partial
+  download or streaming).
 - `GET /submissions` and friends — the user's own submissions
   (OAuth identity required).
 

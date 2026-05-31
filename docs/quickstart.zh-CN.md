@@ -83,7 +83,7 @@ with Session.open() as s:
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # 根目录列表
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > 若收到 `403 App does not have datasets scope`，请向 KHDP 团队申请为您的应用授予 `datasets` scope。所有调用方都适用。

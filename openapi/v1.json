@@ -83,25 +83,6 @@
         }
       }
     },
-    "/datasets/{code}/{version}/files": {
-      "get": {
-        "tags": ["Datasets"],
-        "summary": "List files in a dataset version",
-        "description": "Requires the `datasets` scope on the calling app/credential.",
-        "operationId": "listDatasetFiles",
-        "security": [ { "bearerAuth": [] } ],
-        "parameters": [
-          { "$ref": "#/components/parameters/DatasetCode" },
-          { "$ref": "#/components/parameters/DatasetVersion" },
-          { "name": "key", "in": "query", "schema": { "type": "string" }, "description": "Directory prefix; empty/absent for root." }
-        ],
-        "responses": {
-          "200": { "description": "File list.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FileListing" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
     "/datasets/{code}/{version}/files/download-link": {
       "get": {
         "tags": ["Datasets"],
@@ -124,8 +105,8 @@
     "/datasets/{code}/{version}/files-download-link-all": {
       "get": {
         "tags": ["Datasets"],
-        "summary": "Get presigned download URLs for every file (bulk, paginated)",
-        "description": "Open-policy datasets only. Cursor-paginated via `continueToken`; the last page returns `continueToken: null`.",
+        "summary": "List every file (flat) with presigned download URLs",
+        "description": "Open-policy datasets only. Returns a flat, recursion-free enumeration of every file under the version, with key, size, and a presigned download URL per item — backed by S3 `ListObjectsV2`. Cursor-paginated via `continueToken` (page size 1000); the last page returns `continueToken: null`. This is the canonical way to enumerate dataset contents; there is no separate directory-mode endpoint.",
         "operationId": "listBulkDownloadLinks",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [
@@ -382,15 +363,6 @@
           "sizeBytes": { "type": "integer", "format": "int64" }
         }
       },
-      "FileListing": {
-        "type": "object",
-        "description": "One directory level of a dataset. `subDirs` lists immediate child directories; `contents` lists files at the current `key` prefix. `archive` mirrors the block on the dataset detail endpoint.",
-        "properties": {
-          "subDirs":  { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" } } } },
-          "contents": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } },
-          "archive":  { "$ref": "#/components/schemas/Archive" }
-        }
-      },
       "DatasetPage": {
         "type": "object",
         "required": ["data", "totalCnt", "page", "limit"],
@@ -428,8 +400,9 @@
             "type": "object",
             "required": ["key", "url"],
             "properties": {
-              "key": { "type": "string" },
-              "url": { "type": "string", "format": "uri" }
+              "key":  { "type": "string" },
+              "size": { "type": "integer", "format": "int64", "description": "File size in bytes (S3 object size)." },
+              "url":  { "type": "string", "format": "uri" }
             }
           } },
           "continueToken": { "type": ["string", "null"], "description": "Cursor for the next page; `null` on the last page." }

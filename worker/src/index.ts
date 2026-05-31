@@ -111,17 +111,13 @@ async function v1Gateway(
   const legacy = legacyHint(tail);
   if (legacy) return legacyReject(legacy, requestId);
 
-  // Dataset detail / files listing: enrich the response with `archive`
+  // Dataset detail: enrich the response with an `archive` block
   // (presigned zip download URL when one exists) by piggy-backing extra
   // backend calls on the same request. The Worker stays the only place
   // that knows the short canonical → long backend mapping.
   const detailMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)$/);
   if (detailMatch && req.method === "GET") {
     return enrichDatasetDetail(req, env, requestId, detailMatch[1], detailMatch[2]);
-  }
-  const filesMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files$/);
-  if (filesMatch && req.method === "GET") {
-    return enrichDatasetFiles(req, env, requestId, filesMatch[1], filesMatch[2], url.search);
   }
 
   if (tail === "/datasets" || tail.startsWith("/datasets/")) {
@@ -191,6 +187,16 @@ function legacyHint(tail: string): { incoming: string; canonical: string } | nul
   // /v1/external/oauth-login  →  /v1/oauth/authorize
   if (tail === "/external/oauth-login") {
     return { incoming: "/v1/external/oauth-login", canonical: "/v1/oauth/authorize" };
+  }
+  // /v1/datasets/{code}/{version}/files (directory-mode listing) was
+  // removed; flat enumeration via files-download-link-all is the only
+  // listing primitive.
+  const filesDir = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files(\?|$)/);
+  if (filesDir) {
+    return {
+      incoming: "/v1" + tail,
+      canonical: `/v1/datasets/${filesDir[1]}/${filesDir[2]}/files-download-link-all`,
+    };
   }
   // Generic /v1/open/* and /v1/external/* are explicitly removed surface.
   if (tail.startsWith("/open/") || tail === "/open") {
@@ -277,48 +283,6 @@ async function enrichDatasetDetail(
   publicBody.archive = archive;
 
   return new Response(JSON.stringify(publicBody, null, 2), {
-    status: 200,
-    headers: jsonResponseHeaders(requestId),
-  });
-}
-
-/**
- * GET /v1/datasets/{code}/{version}/files
- *
- * Backend file listing always requires auth, so this enrichment runs
- * after we've confirmed the user has access. The `archive` block here
- * always carries the presigned URL when zip exists.
- */
-async function enrichDatasetFiles(
-  req: Request,
-  env: Env,
-  requestId: string,
-  code: string,
-  version: string,
-  search: string,
-): Promise<Response> {
-  const backend = env.BACKEND_BASE.replace(/\/$/, "");
-  const fwdHeaders = passthroughHeaders(req.headers);
-  fwdHeaders.set("X-Request-Id", requestId);
-
-  const [filesResp, internalResp] = await Promise.all([
-    fetch(`${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}/files${search}`, {
-      headers: fwdHeaders,
-      redirect: "manual",
-    }),
-    fetch(`${backend}/dataset/code/${encodeURIComponent(code)}`, {
-      headers: new Headers({ "X-Request-Id": requestId }),
-      redirect: "manual",
-    }),
-  ]);
-
-  if (!filesResp.ok) return forwardResponse(filesResp, requestId);
-
-  const filesBody = (await filesResp.json()) as Record<string, unknown>;
-  const archive = await resolveArchive(req, env, requestId, internalResp, version);
-  filesBody.archive = archive;
-
-  return new Response(JSON.stringify(filesBody, null, 2), {
     status: 200,
     headers: jsonResponseHeaders(requestId),
   });

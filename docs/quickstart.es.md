@@ -83,7 +83,7 @@ El listado de archivos requiere el scope `datasets` en la credencial que use.
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # listado raíz
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > Si recibe `403 App does not have datasets scope`, pida al equipo de KHDP que conceda el scope `datasets` a su aplicación. Aplica a todos los llamadores.
