@@ -102,7 +102,7 @@ khdp datasets download <CODE> --out ./data --dry-run
 khdp datasets download <CODE> --out ./data
 ```
 
-`download` はサーバーの `files-download-link-all` エンドポイントをページネーション（1 ページあたり 1000 キー）し、各ファイルをストリーミング取得します。フローの検証だけ行いたい場合は `--max-pages N` で N ページ後に停止できます。
+`download` はサーバーの `files` エンドポイントをページネーション（1 ページあたり 1000 キー）し、各ファイルをストリーミング取得します。フローの検証だけ行いたい場合は `--max-pages N` で N ページ後に停止できます。
 
 > ダウンロードは `accessPolicy=open` のデータセットに限ります。Restricted / Credentialed / ContributorReview は `400 Is Not Open Access Dataset` を返します — アクセス申請は KHDP の Web UI から行ってください。
 

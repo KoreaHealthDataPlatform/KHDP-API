@@ -102,7 +102,7 @@ khdp datasets download <CODE> --out ./data --dry-run
 khdp datasets download <CODE> --out ./data
 ```
 
-`download` 对服务器的 `files-download-link-all` 端点进行分页（每页 1000 个 key）并以流方式下载每个文件。当仅为验证流程时，使用 `--max-pages N` 在 N 页后停止。
+`download` 对服务器的 `files` 端点进行分页（每页 1000 个 key）并以流方式下载每个文件。当仅为验证流程时，使用 `--max-pages N` 在 N 页后停止。
 
 > 下载仅适用于 `accessPolicy=open` 的数据集。Restricted / Credentialed / ContributorReview 会返回 `400 Is Not Open Access Dataset` — 请通过 KHDP 网页申请访问。
 

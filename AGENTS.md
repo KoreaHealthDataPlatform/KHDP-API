@@ -187,7 +187,7 @@ with Session.open() as s:
     # OAuth (PKCE) — cached token after `khdp login`
     r = s.authed_request(
         "GET",
-        "/datasets/KHDP-OPEN-001/latest/files-download-link-all",
+        "/datasets/KHDP-OPEN-001/latest/files",
         auth="oauth",
     )
 
@@ -236,7 +236,7 @@ Tools exposed on stdio:
 `khdp_api_request` resolves a relative `path` against `KHDP_API_BASE` and
 applies the credential implied by `auth`. Use it for any KHDP endpoint that
 lacks a dedicated tool — e.g.
-`path="/datasets/<code>/<version>/files-download-link-all"`.
+`path="/datasets/<code>/<version>/files"`.
 
 **There is deliberately no login tool.** PKCE login needs a browser session
 on the user's machine; that flow must not run inside an LLM tool call. The

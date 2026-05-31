@@ -158,10 +158,13 @@ class Session:
 
         * ``app_key`` -- ``X-App-Id`` / ``X-App-Secret``; authenticates the
           *app*, not a user. Manual issuance.
-        * ``api_key`` -- ``Authorization: Bearer <token>``; the token is a
+        * ``api_key`` -- ``X-API-Key: <token>``; the token is a
           ``khdp_pat_*`` PAT from any source (``KHDP_PAT`` env,
           ``KHDP_TOKEN`` legacy alias, ``khdp pat set`` store, or
-          ``api_key`` in TOML). Long-lived; no PKCE refresh.
+          ``api_key`` in TOML). Long-lived; no PKCE refresh. The
+          gateway also accepts ``Authorization: Bearer <pat>``; we use
+          X-API-Key to keep PATs visually distinct from OAuth Bearer
+          tokens in wire-level traces.
         * ``oauth``  -- ``Authorization: Bearer <pkce_token>`` from
           ``khdp login``. Short-lived; PKCE refresh on the fly.
 
@@ -198,7 +201,11 @@ class Session:
                     "api_key auth requires a PAT "
                     "(set KHDP_PAT or run `khdp pat set <token>`)."
                 )
-            return {"Authorization": f"Bearer {pat}"}
+            # X-API-Key is the canonical header for PATs on khdp.ai;
+            # the gateway folds it into Authorization: Bearer before
+            # forwarding to the backend. Authorization: Bearer <pat>
+            # also works if you prefer it.
+            return {"X-API-Key": pat}
         # oauth
         if require_auth:
             return {"Authorization": f"Bearer {self.oauth_access_token()}"}

@@ -102,7 +102,7 @@ khdp datasets download <CODE> --out ./data --dry-run
 khdp datasets download <CODE> --out ./data
 ```
 
-`download`는 서버의 `files-download-link-all` 엔드포인트를 페이지네이션(페이지당 1000키)하며 각 파일을 스트리밍합니다. 흐름만 검증할 때는 `--max-pages N`으로 N 페이지 후 중단할 수 있습니다.
+`download`는 서버의 `files` 엔드포인트를 페이지네이션(페이지당 1000키)하며 각 파일을 스트리밍합니다. 흐름만 검증할 때는 `--max-pages N`으로 N 페이지 후 중단할 수 있습니다.
 
 > 다운로드는 `accessPolicy=open` 데이터셋에만 가능합니다. Restricted / Credentialed / ContributorReview 데이터셋은 `400 Is Not Open Access Dataset`을 반환합니다 — 접근 신청은 KHDP 웹 UI에서 진행하세요.
 
