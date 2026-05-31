@@ -90,7 +90,7 @@ khdp status | refresh | logout | config
 
 khdp datasets list      [--query KW] [--policy open|restricted|...]
 khdp datasets show      <code>[@<version>]
-khdp datasets files     <code>[@<version>] [--key PREFIX]
+khdp datasets files     <code>[@<version>] [--prefix STR]
 khdp datasets download  <code>[@<version>] [--out DIR] [--dry-run]
 
 khdp api METHOD PATH [--query K=V ...] [--data '{...}']

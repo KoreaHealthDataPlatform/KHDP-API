@@ -69,7 +69,7 @@ api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
 | Env var | Purpose |
 | --- | --- |
 | `KHDP_APP_ID` | registered app UUID (defaults to the official KHDP CLI app) |
-| `KHDP_PAT` | personal access token (`khdp_pat_…`) → `Authorization: Bearer`. **Canonical** env var |
+| `KHDP_PAT` | personal access token (`khdp_pat_…`). Sent as `Authorization: Bearer <pat>` (canonical) — or equivalently `X-API-Key: <pat>`; the gateway accepts either form and folds X-API-Key into Authorization before forwarding. Use X-API-Key when you want PATs to read differently from OAuth Bearer tokens in client code. **Canonical** env var |
 | `KHDP_APP_SECRET` | *(advanced)* app-developer headless auth; not part of the public surface |
 | `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
 | `KHDP_API_BASE` | API base (default `https://khdp.ai/v1`, an alias of `https://khdp.net/_api`) |
@@ -145,7 +145,7 @@ khdp config                # show resolved configuration
 # datasets (public)
 khdp datasets list [--query KW] [--policy open|restricted|...] [--page N] [--limit N] [--json]
 khdp datasets show <code>[@<version>] [--json]
-khdp datasets files <code>[@<version>] [--key PREFIX] [--json]
+khdp datasets files <code>[@<version>] [--prefix PREFIX] [--max-pages N] [--json]
 khdp datasets download-link <code>[@<version>] --key FILE
 khdp datasets download <code>[@<version>] [--out DIR] [--max-pages N] [--dry-run]
 
@@ -185,8 +185,11 @@ with Session.open() as s:
     token = s.access_token()      # valid token, auto-refresh
 
     # OAuth (PKCE) — cached token after `khdp login`
-    r = s.authed_request("GET", "/datasets/KHDP-OPEN-001/latest/files",
-                         auth="oauth")
+    r = s.authed_request(
+        "GET",
+        "/datasets/KHDP-OPEN-001/latest/files",
+        auth="oauth",
+    )
 
     # (Advanced) App Key — `X-App-Id` / `X-App-Secret`; authenticates the
     # app, not a user. Not part of the public surface; reserved for
@@ -264,17 +267,20 @@ you reach them through `khdp_api_request` / `khdp api` / the typed
 subcommands. Highlights:
 
 - `GET /datasets` — search public datasets (anonymous OK).
-- `GET /datasets/:code/:version/files` — file list (needs the app's
-  `datasets` scope).
-- `GET /datasets/:code/:version/files-download-link-all` — bulk
-  presigned download URLs (Open-policy datasets only).
-- **`archive`** — both `/datasets/:code/:version` and
-  `/datasets/:code/:version/files` carry an `archive` block when a
-  pre-built zip exists for the latest published version. Bearer-
-  authenticated callers receive `archive.url` (presigned, ready to
-  fetch); anonymous callers see only `archive.available`. Prefer the
-  zip over `files-download-link-all` when present — one request, one
-  download.
+- `GET /datasets/:code/:version` — dataset detail (anonymous OK). When
+  a pre-built zip exists for the latest published version the response
+  also carries an `archive` block; bearer-authenticated callers receive
+  `archive.url` (presigned, ready to fetch), anonymous callers see only
+  `archive.available`.
+- `GET /datasets/:code/:version/files` — flat enumeration with `{key,
+  size, url}` per item, 1000 per page via `continueToken` (Open-policy
+  datasets only, `datasets` scope). REST collection.
+- `GET /datasets/:code/:version/files/:key` — single file presigned
+  URL. `:key` is the full S3 key including `/` (e.g.
+  `imaging/scan001.dcm` — no URL-encoding needed; the gateway treats
+  every path segment after `/files/` as the key). REST member.
+- **Preferred download order**: `archive.url` (one fetch, one zip) →
+  `/files` (per-file URLs when you need partial download or streaming).
 - `GET /submissions` and friends — the user's own submissions
   (OAuth identity required).
 

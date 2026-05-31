@@ -83,7 +83,7 @@ El listado de archivos requiere el scope `datasets` en la credencial que use.
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # listado raíz
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > Si recibe `403 App does not have datasets scope`, pida al equipo de KHDP que conceda el scope `datasets` a su aplicación. Aplica a todos los llamadores.
@@ -102,7 +102,7 @@ Luego, la descarga real:
 khdp datasets download <CODE> --out ./data
 ```
 
-`download` pagina el endpoint `files-download-link-all` del servidor (1000 claves por página) y descarga cada archivo en streaming. Use `--max-pages N` para detenerse tras N páginas cuando solo quiera verificar el flujo.
+`download` pagina el endpoint `files` del servidor (1000 claves por página) y descarga cada archivo en streaming. Use `--max-pages N` para detenerse tras N páginas cuando solo quiera verificar el flujo.
 
 > Solo se pueden descargar datasets con `accessPolicy=open`. Los Restricted / Credentialed / ContributorReview devuelven `400 Is Not Open Access Dataset` — solicite acceso desde la web de KHDP.
 

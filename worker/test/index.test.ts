@@ -166,35 +166,45 @@ describe("/v1/* gateway canonical aliases", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
-  it("/v1/datasets/KHDP-001/latest/files → calls /_api/open/datasets/.../files (with archive enrichment fetches)", async () => {
+  it("/v1/datasets/KHDP-001/latest/files → backend files-download-link-all (REST-canonical list)", async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const u = typeof input === "string" ? input : input.toString();
         calls.push(u);
-        // Internal lookup: no cvId → archive enrichment short-circuits.
         if (u.endsWith("/dataset/code/KHDP-001")) {
           return new Response(JSON.stringify({ ciCode: "KHDP-001" }), { status: 200 });
         }
-        return new Response(JSON.stringify({ subDirs: [], contents: [] }), {
+        return new Response(JSON.stringify({ items: [], continueToken: null }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }),
     );
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files?key=imaging/"),
+      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files?continueToken=TOK"),
       env,
       makeCtx(),
     );
     expect(res.status).toBe(200);
     expect(calls).toContain(
-      "https://backend.example/_api/open/datasets/KHDP-001/latest/files?key=imaging/",
+      "https://backend.example/_api/open/datasets/KHDP-001/latest/files-download-link-all?continueToken=TOK",
     );
-    expect(calls).toContain("https://backend.example/_api/dataset/code/KHDP-001");
-    const body = (await res.json()) as { archive: { available: boolean; format: string } };
-    expect(body.archive).toEqual({ available: false, format: "zip" });
+    const body = (await res.json()) as { archive: { available: boolean } };
+    expect(body.archive.available).toBe(false);
+  });
+
+  it("/v1/datasets/KHDP-001/latest/files/imaging/a.dcm → backend files/download-link?key= (REST-canonical member)", async () => {
+    const { seen } = stubUpstream({ url: "https://signed/" });
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files/imaging/a.dcm"),
+      env,
+      makeCtx(),
+    );
+    expect(seen.url).toBe(
+      "https://backend.example/_api/open/datasets/KHDP-001/latest/files/download-link?key=imaging%2Fa.dcm",
+    );
   });
 
   it("/v1/submissions → /_api/open/dataset-submissions", async () => {
@@ -384,6 +394,43 @@ describe("archive enrichment", () => {
     expect(body.archive.format).toBe("zip");
   });
 
+  it("X-API-Key header → translated to Authorization: Bearer; archive.url populated", async () => {
+    const sentHeaders: Record<string, string> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const u = typeof input === "string" ? input : input.toString();
+        if (u.endsWith("/compress-link")) {
+          const hdrs = new Headers(init?.headers as HeadersInit);
+          sentHeaders["compress-link"] = hdrs.get("Authorization") ?? "";
+        }
+        if (u.includes("/open/datasets/INSPIRE/1.3")) {
+          return new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 });
+        }
+        if (u.endsWith("/dataset/code/INSPIRE")) {
+          return new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 });
+        }
+        if (u.endsWith("/compress-check")) {
+          return new Response(JSON.stringify({ isExist: true }), { status: 200 });
+        }
+        if (u.endsWith("/compress-link")) {
+          return new Response(JSON.stringify({ url: "https://obj.example/X.zip" }), { status: 200 });
+        }
+        return new Response("not stubbed", { status: 500 });
+      }),
+    );
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3", {
+        headers: { "X-API-Key": "khdp_pat_abc" },
+      }),
+      env,
+      makeCtx(),
+    );
+    const body = (await res.json()) as { archive: { url?: string } };
+    expect(body.archive.url).toBe("https://obj.example/X.zip");
+    expect(sentHeaders["compress-link"]).toBe("Bearer khdp_pat_abc");
+  });
+
   it("requested version != latest → archive omitted (available=false)", async () => {
     stubBackend({
       "/open/datasets/INSPIRE/1.2":
@@ -441,6 +488,30 @@ describe("legacy long-form paths", () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as { canonical: string };
     expect(body.canonical).toBe("/v1/submissions/MY-001/1.0.0/submit");
+  });
+
+  it("/v1/datasets/{c}/{v}/files-download-link-all → 404 LEGACY_PATH suggesting /files", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3/files-download-link-all"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { errorCode: string; canonical: string };
+    expect(body.errorCode).toBe("LEGACY_PATH");
+    expect(body.canonical).toBe("/v1/datasets/INSPIRE/1.3/files");
+  });
+
+  it("/v1/datasets/{c}/{v}/files/download-link → 404 LEGACY_PATH suggesting /files/{key}", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3/files/download-link?key=imaging%2Fa.dcm"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { errorCode: string; canonical: string };
+    expect(body.errorCode).toBe("LEGACY_PATH");
+    expect(body.canonical).toBe("/v1/datasets/INSPIRE/1.3/files/{key}");
   });
 
   it("/v1/external/oauth-login → 404 suggesting /v1/oauth/authorize", async () => {

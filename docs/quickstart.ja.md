@@ -83,7 +83,7 @@ with Session.open() as s:
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # ルート一覧
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > `403 App does not have datasets scope` が返る場合は、KHDP チームに該当アプリへの `datasets` スコープ付与を依頼してください。すべての呼び出し元に同様に適用されます。
@@ -102,7 +102,7 @@ khdp datasets download <CODE> --out ./data --dry-run
 khdp datasets download <CODE> --out ./data
 ```
 
-`download` はサーバーの `files-download-link-all` エンドポイントをページネーション（1 ページあたり 1000 キー）し、各ファイルをストリーミング取得します。フローの検証だけ行いたい場合は `--max-pages N` で N ページ後に停止できます。
+`download` はサーバーの `files` エンドポイントをページネーション（1 ページあたり 1000 キー）し、各ファイルをストリーミング取得します。フローの検証だけ行いたい場合は `--max-pages N` で N ページ後に停止できます。
 
 > ダウンロードは `accessPolicy=open` のデータセットに限ります。Restricted / Credentialed / ContributorReview は `400 Is Not Open Access Dataset` を返します — アクセス申請は KHDP の Web UI から行ってください。
 

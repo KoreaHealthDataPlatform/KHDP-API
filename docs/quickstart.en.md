@@ -81,7 +81,7 @@ File listing requires the `datasets` scope on whichever credential you're using.
 ```bash
 khdp datasets show     <CODE>
 khdp datasets files    <CODE>            # root listing
-khdp datasets files    <CODE> --key imaging/
+khdp datasets files    <CODE> --prefix imaging/
 ```
 
 > If you get `403 App does not have datasets scope`, ask the KHDP team to grant your app the `datasets` scope. This applies to all callers.
@@ -100,7 +100,7 @@ Then download:
 khdp datasets download <CODE> --out ./data
 ```
 
-`download` paginates the server's `files-download-link-all` endpoint (1000 keys per page) and streams each file. Use `--max-pages N` to stop after N pages when verifying flow.
+`download` paginates the server's `files` endpoint (1000 keys per page) and streams each file. Use `--max-pages N` to stop after N pages when verifying flow.
 
 > Downloads only work for `accessPolicy=open` datasets. Restricted / Credentialed / ContributorReview datasets return `400 Is Not Open Access Dataset` — use the KHDP web UI for access requests.
 

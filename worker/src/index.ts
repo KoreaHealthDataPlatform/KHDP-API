@@ -87,14 +87,18 @@ async function mirrorMarkdown(
 
 /** Forward /v1/* to the KHDP backend, preserving auth and query.
  *
- * The external surface uses short, agent-friendly canonical paths;
- * the Worker rewrites them onto the legacy nstri-back routes:
+ * The external surface uses short, REST-canonical paths; the Worker
+ * rewrites them onto the legacy nstri-back routes:
  *
- *   /v1/datasets/*           → /_api/open/datasets/*
- *   /v1/submissions/*        → /_api/open/dataset-submissions/*
- *   /v1/oauth/authorize      → 302 redirect to WEB_BASE/external/oauth-login
- *                              (browser-facing OAuth/PKCE login page, lives
- *                              at the web root, not under /_api)
+ *   /v1/datasets                              → /_api/open/datasets
+ *   /v1/datasets/{c}/{v}                      → /_api/open/datasets/{c}/{v}
+ *                                                (response enriched with `archive`)
+ *   /v1/datasets/{c}/{v}/files                → /_api/open/datasets/{c}/{v}/files-download-link-all
+ *                                                (REST collection; flat S3 enumeration)
+ *   /v1/datasets/{c}/{v}/files/{key+}         → /_api/open/datasets/{c}/{v}/files/download-link?key=
+ *                                                (REST member; presigned URL for one file)
+ *   /v1/submissions/*                         → /_api/open/dataset-submissions/*
+ *   /v1/oauth/authorize                       → 302 redirect to WEB_BASE/external/oauth-login
  *
  * Everything else under /v1 (e.g. /oauth/token, /oauth/refresh-token,
  * /oauth/api-tokens) already matches the backend path 1:1.
@@ -111,17 +115,29 @@ async function v1Gateway(
   const legacy = legacyHint(tail);
   if (legacy) return legacyReject(legacy, requestId);
 
-  // Dataset detail / files listing: enrich the response with `archive`
-  // (presigned zip download URL when one exists) by piggy-backing extra
-  // backend calls on the same request. The Worker stays the only place
-  // that knows the short canonical → long backend mapping.
-  const detailMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)$/);
-  if (detailMatch && req.method === "GET") {
-    return enrichDatasetDetail(req, env, requestId, detailMatch[1], detailMatch[2]);
-  }
-  const filesMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files$/);
-  if (filesMatch && req.method === "GET") {
-    return enrichDatasetFiles(req, env, requestId, filesMatch[1], filesMatch[2], url.search);
+  // Dataset routes that need either response enrichment or a path
+  // shape different from the backend's:
+  //   /datasets/{c}/{v}            → enrich with archive (detail)
+  //   /datasets/{c}/{v}/files      → backend `files-download-link-all`,
+  //                                  enriched with archive
+  //   /datasets/{c}/{v}/files/{k+} → backend `files/download-link?key=`
+  if (req.method === "GET") {
+    const detailMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)$/);
+    if (detailMatch) {
+      return enrichDatasetDetail(req, env, requestId, detailMatch[1], detailMatch[2]);
+    }
+    const filesListMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files$/);
+    if (filesListMatch) {
+      return enrichDatasetFiles(
+        req, env, requestId, filesListMatch[1], filesListMatch[2], url.search,
+      );
+    }
+    const singleFileMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files\/(.+)$/);
+    if (singleFileMatch) {
+      return singleFileLink(
+        req, env, requestId, singleFileMatch[1], singleFileMatch[2], singleFileMatch[3],
+      );
+    }
   }
 
   if (tail === "/datasets" || tail.startsWith("/datasets/")) {
@@ -191,6 +207,23 @@ function legacyHint(tail: string): { incoming: string; canonical: string } | nul
   // /v1/external/oauth-login  →  /v1/oauth/authorize
   if (tail === "/external/oauth-login") {
     return { incoming: "/v1/external/oauth-login", canonical: "/v1/oauth/authorize" };
+  }
+  // Old long-form file URLs replaced by the REST-canonical shape:
+  //   files-download-link-all  →  /files
+  //   files/download-link?key= →  /files/{key}
+  const allLinks = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files-download-link-all(\?|$)/);
+  if (allLinks) {
+    return {
+      incoming: "/v1" + tail,
+      canonical: `/v1/datasets/${allLinks[1]}/${allLinks[2]}/files`,
+    };
+  }
+  const oneLink = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files\/download-link(\?|$)/);
+  if (oneLink) {
+    return {
+      incoming: "/v1" + tail,
+      canonical: `/v1/datasets/${oneLink[1]}/${oneLink[2]}/files/{key}`,
+    };
   }
   // Generic /v1/open/* and /v1/external/* are explicitly removed surface.
   if (tail.startsWith("/open/") || tail === "/open") {
@@ -285,9 +318,12 @@ async function enrichDatasetDetail(
 /**
  * GET /v1/datasets/{code}/{version}/files
  *
- * Backend file listing always requires auth, so this enrichment runs
- * after we've confirmed the user has access. The `archive` block here
- * always carries the presigned URL when zip exists.
+ * Flat enumeration of every file under the version. Implemented on top
+ * of the backend's `files-download-link-all`, which is the S3
+ * `ListObjectsV2` enumeration; the canonical short path
+ * (`/files`) hides the historical name. Each page of `{items,
+ * continueToken}` also gets an `archive` block so callers can spot the
+ * dataset-zip shortcut without a separate detail call.
  */
 async function enrichDatasetFiles(
   req: Request,
@@ -301,27 +337,59 @@ async function enrichDatasetFiles(
   const fwdHeaders = passthroughHeaders(req.headers);
   fwdHeaders.set("X-Request-Id", requestId);
 
-  const [filesResp, internalResp] = await Promise.all([
-    fetch(`${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}/files${search}`, {
-      headers: fwdHeaders,
-      redirect: "manual",
-    }),
+  const [listResp, internalResp] = await Promise.all([
+    fetch(
+      `${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}/files-download-link-all${search}`,
+      { headers: fwdHeaders, redirect: "manual" },
+    ),
     fetch(`${backend}/dataset/code/${encodeURIComponent(code)}`, {
       headers: new Headers({ "X-Request-Id": requestId }),
       redirect: "manual",
     }),
   ]);
 
-  if (!filesResp.ok) return forwardResponse(filesResp, requestId);
+  if (!listResp.ok) return forwardResponse(listResp, requestId);
 
-  const filesBody = (await filesResp.json()) as Record<string, unknown>;
-  const archive = await resolveArchive(req, env, requestId, internalResp, version);
-  filesBody.archive = archive;
+  const listBody = (await listResp.json()) as Record<string, unknown>;
+  listBody.archive = await resolveArchive(req, env, requestId, internalResp, version);
 
-  return new Response(JSON.stringify(filesBody, null, 2), {
+  return new Response(JSON.stringify(listBody, null, 2), {
     status: 200,
     headers: jsonResponseHeaders(requestId),
   });
+}
+
+/**
+ * GET /v1/datasets/{code}/{version}/files/{key+}
+ *
+ * Single-file presigned URL. `key` is the full S3 object key, which can
+ * (and usually does) contain `/`; we accept everything past `/files/`
+ * as the key and pass it through to the backend as a query argument.
+ * Response shape is whatever the backend returns (currently `{url,
+ * expiresAt?}`) so this is a thin path-shape adapter.
+ */
+async function singleFileLink(
+  req: Request,
+  env: Env,
+  requestId: string,
+  code: string,
+  version: string,
+  key: string,
+): Promise<Response> {
+  const backend = env.BACKEND_BASE.replace(/\/$/, "");
+  const fwdHeaders = passthroughHeaders(req.headers);
+  fwdHeaders.set("X-Request-Id", requestId);
+
+  const target =
+    `${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}` +
+    `/files/download-link?key=${encodeURIComponent(key)}`;
+
+  const upstream = await fetch(target, {
+    method: "GET",
+    headers: fwdHeaders,
+    redirect: "manual",
+  });
+  return forwardResponse(upstream, requestId);
 }
 
 /**
@@ -370,7 +438,7 @@ async function resolveArchive(
 
   if (!exists) return empty;
 
-  const auth = req.headers.get("authorization");
+  const auth = effectiveBearer(req.headers);
   if (!auth) return { available: true, format: "zip" };
 
   try {
@@ -426,12 +494,41 @@ function jsonResponseHeaders(requestId: string): Headers {
   });
 }
 
+/**
+ * Forward client headers to the backend, with two normalizations:
+ *  - hop-by-hop headers are stripped
+ *  - `X-API-Key: <pat>` is translated to `Authorization: Bearer <pat>`
+ *    when no Authorization header is already present. This lets PAT
+ *    users send a header that is visually distinct from OAuth Bearer
+ *    tokens (a common debugging hint) without the backend needing to
+ *    know about a second header.
+ */
 function passthroughHeaders(input: Headers): Headers {
   const out = new Headers();
   for (const [k, v] of input) {
-    if (!HOP_BY_HOP.has(k.toLowerCase())) out.append(k, v);
+    const lower = k.toLowerCase();
+    if (HOP_BY_HOP.has(lower)) continue;
+    if (lower === "x-api-key") continue; // dropped; folded into Authorization below
+    out.append(k, v);
+  }
+  if (!out.has("authorization")) {
+    const apiKey = input.get("x-api-key");
+    if (apiKey) out.set("Authorization", `Bearer ${apiKey}`);
   }
   return out;
+}
+
+/**
+ * Effective bearer token from the request, accepting either header
+ * form. Used to decide whether to fetch a presigned URL (archive),
+ * since `req.headers.get("authorization")` alone misses X-API-Key.
+ */
+function effectiveBearer(input: Headers): string | null {
+  const auth = input.get("authorization");
+  if (auth) return auth;
+  const apiKey = input.get("x-api-key");
+  if (apiKey) return `Bearer ${apiKey}`;
+  return null;
 }
 
 function passthroughResponseHeaders(input: Headers): Headers {
@@ -453,7 +550,7 @@ function preflight(): Response {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
+      "Access-Control-Allow-Headers": "Authorization, X-API-Key, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
       "Access-Control-Max-Age": "86400",
     },
   });

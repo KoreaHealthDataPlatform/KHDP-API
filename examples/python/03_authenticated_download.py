@@ -50,13 +50,13 @@ def main() -> int:
         code = items[0]["code"]
         print(f"Downloading {code} → {args.out}")
 
-        # 2. Walk the bulk presigned-URL endpoint, page by page.
+        # 2. Walk the flat file listing, page by page.
         continue_token: str | None = None
         total = 0
         while True:
             params = {"continueToken": continue_token} if continue_token else {}
             r = s.authed_request(
-                "GET", f"/datasets/{code}/latest/files-download-link-all",
+                "GET", f"/datasets/{code}/latest/files",
                 params=params,
             )
             r.raise_for_status()

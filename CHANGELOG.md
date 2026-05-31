@@ -8,18 +8,55 @@ and uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **`archive` block on dataset detail and file-listing responses** — when
-  a pre-built zip exists for the requested version, `GET /v1/datasets/
-  {code}/{version}` and `.../files` now include an `archive` object
-  describing the download. Bearer-authenticated callers get the
-  presigned `url` (plus `expiresAt` and `sizeBytes` when the backend
-  supplies them); anonymous callers see `available: true` but no URL.
-  When no zip exists or the requested version isn't the latest
-  published, `archive` is `{ available: false, format: "zip" }`. The
-  Worker resolves `cvId` via the backend's `/dataset/code/{code}` lookup
-  and calls `/files/compress-check` and (auth-gated) `/files/compress-
-  link` in parallel with the primary request — no separate endpoint
-  needed.
+- **`X-API-Key` header accepted as a PAT-friendly alias** for
+  `Authorization: Bearer <khdp_pat_*>`. The gateway folds an incoming
+  `X-API-Key` into the standard Authorization header before forwarding
+  to the backend, so there is no backend change. Clients can use
+  `X-API-Key` to make PAT usage visually distinct from OAuth Bearer
+  tokens in their code without losing compatibility. OpenAPI now lists
+  `apiKeyAuth` as a second securityScheme alongside `bearerAuth`.
+
+### Changed
+- **Files endpoints reshaped to REST-canonical collection/member**:
+  - `GET /datasets/{c}/{v}/files` — flat paginated list with `{key,
+    size, url}` per item plus an `archive` block. Replaces the
+    historical `files-download-link-all` name (which leaked the
+    implementation into the URL).
+  - `GET /datasets/{c}/{v}/files/{key}` — single file's presigned URL.
+    `{key}` is the full S3 object key, slashes and all — the gateway
+    accepts every path segment after `/files/` as the key, so
+    `/files/imaging/scan001.dcm` works directly without `%2F` encoding.
+    Replaces `files/download-link?key=`.
+  The old long forms now return `404 LEGACY_PATH` pointing at the
+  canonical replacement.
+- **OpenAPI `FileListing` schema** introduced (renaming
+  `BulkPresignedUrls`); `items[].size` is now documented (the backend
+  has always returned it).
+- **SDK `khdp datasets files`** uses `/files` and accumulates pages
+  with `continueToken`. New flags: `--prefix STR` (client-side filter)
+  and `--max-pages N`; the old `--key DIR` directory argument is gone.
+- **SDK `khdp datasets download-link --key FOO`** now hits
+  `/files/FOO` directly (no query param). `--key` flag preserved on
+  the SDK surface for now.
+
+### Removed
+- **Directory-mode dataset file listing** (the previous
+  `/datasets/{c}/{v}/files` returning `{subDirs, contents}`) is no
+  longer reachable through khdp.ai. The same path now serves the flat
+  collection.
+
+### Added
+- **`archive` block on dataset detail responses** — when a pre-built
+  zip exists for the requested version, `GET /v1/datasets/{code}/
+  {version}` now includes an `archive` object describing the download.
+  Bearer-authenticated callers get the presigned `url` (plus
+  `expiresAt` and `sizeBytes` when the backend supplies them);
+  anonymous callers see `available: true` but no URL. When no zip
+  exists or the requested version isn't the latest published, `archive`
+  is `{ available: false, format: "zip" }`. The Worker resolves `cvId`
+  via the backend's `/dataset/code/{code}` lookup and calls
+  `/files/compress-check` and (auth-gated) `/files/compress-link` in
+  parallel with the primary request — no separate endpoint needed.
 - **`/v1/me` and `/v1/me/balance`** — read-only account endpoints
   exposed through the gateway. Worker rewrites `/v1/me` →
   `/_api/member/profile` and `/v1/me/balance` → `/_api/credit/my-balance`
