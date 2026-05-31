@@ -394,6 +394,43 @@ describe("archive enrichment", () => {
     expect(body.archive.format).toBe("zip");
   });
 
+  it("X-API-Key header → translated to Authorization: Bearer; archive.url populated", async () => {
+    const sentHeaders: Record<string, string> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const u = typeof input === "string" ? input : input.toString();
+        if (u.endsWith("/compress-link")) {
+          const hdrs = new Headers(init?.headers as HeadersInit);
+          sentHeaders["compress-link"] = hdrs.get("Authorization") ?? "";
+        }
+        if (u.includes("/open/datasets/INSPIRE/1.3")) {
+          return new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 });
+        }
+        if (u.endsWith("/dataset/code/INSPIRE")) {
+          return new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 });
+        }
+        if (u.endsWith("/compress-check")) {
+          return new Response(JSON.stringify({ isExist: true }), { status: 200 });
+        }
+        if (u.endsWith("/compress-link")) {
+          return new Response(JSON.stringify({ url: "https://obj.example/X.zip" }), { status: 200 });
+        }
+        return new Response("not stubbed", { status: 500 });
+      }),
+    );
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3", {
+        headers: { "X-API-Key": "khdp_pat_abc" },
+      }),
+      env,
+      makeCtx(),
+    );
+    const body = (await res.json()) as { archive: { url?: string } };
+    expect(body.archive.url).toBe("https://obj.example/X.zip");
+    expect(sentHeaders["compress-link"]).toBe("Bearer khdp_pat_abc");
+  });
+
   it("requested version != latest → archive omitted (available=false)", async () => {
     stubBackend({
       "/open/datasets/INSPIRE/1.2":

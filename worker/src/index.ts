@@ -438,7 +438,7 @@ async function resolveArchive(
 
   if (!exists) return empty;
 
-  const auth = req.headers.get("authorization");
+  const auth = effectiveBearer(req.headers);
   if (!auth) return { available: true, format: "zip" };
 
   try {
@@ -494,12 +494,41 @@ function jsonResponseHeaders(requestId: string): Headers {
   });
 }
 
+/**
+ * Forward client headers to the backend, with two normalizations:
+ *  - hop-by-hop headers are stripped
+ *  - `X-API-Key: <pat>` is translated to `Authorization: Bearer <pat>`
+ *    when no Authorization header is already present. This lets PAT
+ *    users send a header that is visually distinct from OAuth Bearer
+ *    tokens (a common debugging hint) without the backend needing to
+ *    know about a second header.
+ */
 function passthroughHeaders(input: Headers): Headers {
   const out = new Headers();
   for (const [k, v] of input) {
-    if (!HOP_BY_HOP.has(k.toLowerCase())) out.append(k, v);
+    const lower = k.toLowerCase();
+    if (HOP_BY_HOP.has(lower)) continue;
+    if (lower === "x-api-key") continue; // dropped; folded into Authorization below
+    out.append(k, v);
+  }
+  if (!out.has("authorization")) {
+    const apiKey = input.get("x-api-key");
+    if (apiKey) out.set("Authorization", `Bearer ${apiKey}`);
   }
   return out;
+}
+
+/**
+ * Effective bearer token from the request, accepting either header
+ * form. Used to decide whether to fetch a presigned URL (archive),
+ * since `req.headers.get("authorization")` alone misses X-API-Key.
+ */
+function effectiveBearer(input: Headers): string | null {
+  const auth = input.get("authorization");
+  if (auth) return auth;
+  const apiKey = input.get("x-api-key");
+  if (apiKey) return `Bearer ${apiKey}`;
+  return null;
 }
 
 function passthroughResponseHeaders(input: Headers): Headers {
@@ -521,7 +550,7 @@ function preflight(): Response {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
+      "Access-Control-Allow-Headers": "Authorization, X-API-Key, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
       "Access-Control-Max-Age": "86400",
     },
   });

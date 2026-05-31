@@ -7,6 +7,15 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`X-API-Key` header accepted as a PAT-friendly alias** for
+  `Authorization: Bearer <khdp_pat_*>`. The gateway folds an incoming
+  `X-API-Key` into the standard Authorization header before forwarding
+  to the backend, so there is no backend change. Clients can use
+  `X-API-Key` to make PAT usage visually distinct from OAuth Bearer
+  tokens in their code without losing compatibility. OpenAPI now lists
+  `apiKeyAuth` as a second securityScheme alongside `bearerAuth`.
+
 ### Changed
 - **Files endpoints reshaped to REST-canonical collection/member**:
   - `GET /datasets/{c}/{v}/files` — flat paginated list with `{key,

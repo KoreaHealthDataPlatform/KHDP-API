@@ -69,7 +69,7 @@ api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
 | Env var | Purpose |
 | --- | --- |
 | `KHDP_APP_ID` | registered app UUID (defaults to the official KHDP CLI app) |
-| `KHDP_PAT` | personal access token (`khdp_pat_…`) → `Authorization: Bearer`. **Canonical** env var |
+| `KHDP_PAT` | personal access token (`khdp_pat_…`). Sent as `Authorization: Bearer <pat>` (canonical) — or equivalently `X-API-Key: <pat>`; the gateway accepts either form and folds X-API-Key into Authorization before forwarding. Use X-API-Key when you want PATs to read differently from OAuth Bearer tokens in client code. **Canonical** env var |
 | `KHDP_APP_SECRET` | *(advanced)* app-developer headless auth; not part of the public surface |
 | `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
 | `KHDP_API_BASE` | API base (default `https://khdp.ai/v1`, an alias of `https://khdp.net/_api`) |
