@@ -13,7 +13,7 @@
 - Python ≥ 3.10
 - 以下任一凭证：
   - **个人 API 令牌** — 最快：<https://khdp.net> → *Settings → Account → API Token*。一个以 `khdp_pat_…` 开头的字符串。
-  - **`app_id`** — 如需 PKCE 登录或 App Key 认证，请向 KHDP 团队申请。CLI 类应用必须将 `http://127.0.0.1:*/callback` 注册为允许的重定向 URL。
+  - **`app_id`** — 如需 PKCE 登录，请向 KHDP 团队申请。CLI 类应用必须将 `http://127.0.0.1:*/callback` 注册为允许的重定向 URL。
 - 代理步骤需要：已安装 [Claude Code](https://claude.com/claude-code)。
 
 > 前三个步骤完全不需要 `app_id` — 只需要个人 API 令牌（公开搜索甚至无需任何凭证）。
@@ -86,7 +86,7 @@ khdp datasets files    <CODE>            # 根目录列表
 khdp datasets files    <CODE> --key imaging/
 ```
 
-> 若收到 `403 App does not have datasets scope`，请向 KHDP 团队申请为您的应用授予 `datasets` scope。无论是 App Key 还是 OAuth 调用方均适用。
+> 若收到 `403 App does not have datasets scope`，请向 KHDP 团队申请为您的应用授予 `datasets` scope。所有调用方都适用。
 
 ## 5. 下载文件
 
@@ -127,7 +127,7 @@ Claude Code 会调用 MCP 服务器，而后者复用第 2 步建立的令牌缓
 | --- | --- | --- |
 | 任意调用返回 `401` | 头部错误、OAuth 令牌过期，或环境不匹配 | `khdp status`；`khdp refresh`；检查 `khdp config` |
 | `403 App does not have datasets scope` | 颁发令牌的应用缺少 `datasets` scope | 向 KHDP 团队申请 scope（OAuth 也适用） |
-| `403 Auth type "openApiApp" is not allowed` | 使用 App Key 调用了 submission 端点 | 改用 OAuth — submissions 仅限用户调用 |
+| `403 Auth type "openApiApp" is not allowed` | 在用户专用端点上未使用 OAuth/PAT | 改用 OAuth 或 PAT — submissions 仅限用户调用 |
 | `404 Dataset Not Found` | `code` 错误或 `version` 未发布 | 省略版本（默认 `@latest`）或使用 `khdp datasets list` |
 | 下载时 `400 Is Not Open Access Dataset` | 数据集非 Open 策略 | 外部 API 仅可下载 Open 数据集 |
 | `khdp login` 挂起 | 应用未注册 loopback 重定向 URL | 请求 KHDP 运营团队注册 `http://127.0.0.1:*/callback` |

@@ -13,7 +13,7 @@ KHDP API에 인증된 첫 호출이 성공하기까지 — 약 5분.
 - Python ≥ 3.10
 - 다음 중 하나의 자격증명:
   - **개인 API 토큰** — 가장 빠릅니다: <https://khdp.net> → *Settings → Account → API Token*. `khdp_pat_…`로 시작하는 문자열.
-  - **`app_id`** — PKCE 로그인 또는 App Key 인증이 필요하다면 KHDP 팀에 신청하세요. CLI 계열 앱은 허용 리다이렉트 URL로 `http://127.0.0.1:*/callback`이 등록되어 있어야 합니다.
+  - **`app_id`** — PKCE 로그인이 필요하다면 KHDP 팀에 신청하세요. CLI 계열 앱은 허용 리다이렉트 URL로 `http://127.0.0.1:*/callback`이 등록되어 있어야 합니다.
 - 에이전트 단계용: [Claude Code](https://claude.com/claude-code) 설치 필요.
 
 > 처음 세 단계는 `app_id` 없이도 완전히 동작합니다 — 개인 API 토큰만 있으면 됩니다 (공개 검색의 경우 자격증명도 불필요).
@@ -86,7 +86,7 @@ khdp datasets files    <CODE>            # 루트 목록
 khdp datasets files    <CODE> --key imaging/
 ```
 
-> `403 App does not have datasets scope`가 나면 KHDP 팀에 해당 앱의 `datasets` 스코프 부여를 요청하세요. App Key든 OAuth든 동일합니다.
+> `403 App does not have datasets scope`가 나면 KHDP 팀에 해당 앱의 `datasets` 스코프 부여를 요청하세요. 모든 호출자에게 동일하게 적용됩니다.
 
 ## 5. 파일 다운로드
 
@@ -127,7 +127,7 @@ Claude Code가 MCP 서버를 호출하고, MCP 서버는 2단계에서 만들어
 | --- | --- | --- |
 | 모든 호출에서 `401` | 헤더 오류, OAuth 토큰 만료, 또는 환경 불일치 | `khdp status`; `khdp refresh`; `khdp config` 확인 |
 | `403 App does not have datasets scope` | 토큰을 발급한 앱에 `datasets` 스코프가 없음 | KHDP 팀에 스코프 요청 (OAuth에도 적용됨) |
-| `403 Auth type "openApiApp" is not allowed` | App Key로 submission 엔드포인트 호출 | OAuth 사용 — submission은 사용자 전용 |
+| `403 Auth type "openApiApp" is not allowed` | 사용자 전용 엔드포인트를 OAuth/PAT 없이 호출 | OAuth 또는 PAT 사용 — submission은 사용자 전용 |
 | `404 Dataset Not Found` | 잘못된 `code` 또는 미공개 `version` | 버전 생략 (`@latest`로 기본 설정) 또는 `khdp datasets list` 활용 |
 | 다운로드 시 `400 Is Not Open Access Dataset` | 데이터셋이 Open 정책이 아님 | 외부 API로는 Open 데이터셋만 다운로드 가능 |
 | `khdp login` 멈춤 | 앱에 loopback redirect URL 미등록 | KHDP 운영팀에 `http://127.0.0.1:*/callback` 등록 요청 |

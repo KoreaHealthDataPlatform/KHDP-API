@@ -11,7 +11,7 @@ This walkthrough complements [the README](../README.md), which lists four entry 
 - Python ≥ 3.10
 - One of the following credentials:
   - **Personal API token** — fastest: <https://khdp.net> → *Settings → Account → API Token*. A string starting with `khdp_pat_…`.
-  - **`app_id`** — request one from the KHDP team if you need PKCE login or App Key auth. CLI-class apps must register `http://127.0.0.1:*/callback` as an allowed redirect URL.
+  - **`app_id`** — request one from the KHDP team if you need PKCE login. CLI-class apps must register `http://127.0.0.1:*/callback` as an allowed redirect URL.
 - For the agent step: [Claude Code](https://claude.com/claude-code) installed.
 
 > The first three steps work fully without an `app_id` — they only need a personal API token (or no credentials at all for public search).
@@ -84,7 +84,7 @@ khdp datasets files    <CODE>            # root listing
 khdp datasets files    <CODE> --key imaging/
 ```
 
-> If you get `403 App does not have datasets scope`, ask the KHDP team to grant your app the `datasets` scope. This applies to both App Key and OAuth callers.
+> If you get `403 App does not have datasets scope`, ask the KHDP team to grant your app the `datasets` scope. This applies to all callers.
 
 ## 5. Download files
 
@@ -125,7 +125,7 @@ The same MCP server backs [OpenAI Codex CLI](../wrappers/codex/), [Gemini CLI](.
 | --- | --- | --- |
 | `401` on any call | wrong header, expired OAuth token, or wrong environment | `khdp status`; `khdp refresh`; check `khdp config` |
 | `403 App does not have datasets scope` | the app issuing the token lacks `datasets` scope | request scope from KHDP team (applies to OAuth too) |
-| `403 Auth type "openApiApp" is not allowed` | called a submission endpoint with App Key | use OAuth — submissions are user-only |
+| `403 Auth type "openApiApp" is not allowed` | called a user-only endpoint without OAuth/PAT auth | use OAuth or PAT — submissions are user-only |
 | `404 Dataset Not Found` | wrong `code` or unpublished `version` | omit version (defaults to `@latest`) or use `khdp datasets list` |
 | `400 Is Not Open Access Dataset` on download | dataset is not Open-policy | only Open datasets are downloadable via the external API |
 | `khdp login` hangs | loopback redirect URL not registered on the app | ask KHDP ops to register `http://127.0.0.1:*/callback` |

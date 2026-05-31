@@ -7,7 +7,7 @@
 **대한민국 의료 데이터 플랫폼(Korea Health Data Platform)** 개발자 인터페이스 — `curl`, Python, 또는 AI 코딩 에이전트에서 의료 연구 데이터셋을 검색·다운로드·제출할 수 있습니다.
 
 - REST API: `https://khdp.ai/v1` — <https://khdp.ai/docs> 참고.
-- 익명 조회 가능. 인증(App Key / OAuth / API Token)을 통해 다운로드와 제출이 가능합니다.
+- 익명 조회 가능. 인증(OAuth / API Token)을 통해 다운로드와 제출이 가능합니다.
 - 동일한 인증 세션이 CLI, Python 라이브러리, 그리고 Claude Code · Codex CLI · Cursor · Gemini CLI용 MCP 서버를 함께 구동합니다.
 
 > Repo: `khdp-api` · Python 패키지: `khdp` (`pip install khdp`).
@@ -68,7 +68,6 @@ CLI · SDK · MCP에서 모두 사용 가능한 3가지 인증 방식.
 
 | 방식 | 헤더 | 신원 | 일반 용도 |
 | --- | --- | --- | --- |
-| **App Key** | `X-App-Id` + `X-App-Secret` | 앱 자체 | 서버 봇, 공개 카탈로그 미러 |
 | **OAuth (PKCE)** | `Authorization: Bearer <jwt>` | 사용자 | CLI, MCP, 사용자 권한 위임 SaaS |
 | **API Token** (PAT) | `Authorization: Bearer khdp_pat_…` | 사용자 | 노트북, AI 에이전트 (장기 토큰, refresh 불필요) |
 
@@ -77,12 +76,11 @@ CLI · SDK · MCP에서 모두 사용 가능한 3가지 인증 방식.
 ```toml
 # ./khdp.local.toml  (또는 ~/.config/khdp/config.toml)
 app_id     = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."             # App Key
 # api_key    = "khdp_pat_..."    # 개인 API 토큰
 api_base   = "https://khdp.ai/v1"
 ```
 
-또는 환경변수: `KHDP_APP_ID`, `KHDP_APP_SECRET`, `KHDP_TOKEN`.
+또는 환경변수: `KHDP_APP_ID`, `KHDP_TOKEN`.
 
 ## CLI
 
@@ -99,7 +97,7 @@ khdp api METHOD PATH [--query K=V ...] [--data '{...}']
                      [--auth {auto,app-key,api-key,oauth}]
 ```
 
-`--auth auto`는 다음 순서로 자격증명을 선택합니다: API Token → 캐시된 OAuth → App Key.
+`--auth auto`는 다음 순서로 자격증명을 선택합니다: API Token → 캐시된 OAuth.
 
 ## MCP 서버
 

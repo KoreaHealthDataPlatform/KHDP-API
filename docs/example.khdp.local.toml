@@ -13,12 +13,6 @@ app_id = ""
 # placeholder URL with the KHDP team.
 redirect_url = ""
 
-# App Key secret. With app_id above this enables headless `X-App-Id` /
-# `X-App-Secret` auth for public datasets (`khdp api ... --auth app-key`).
-# Authenticates the *app*, not a user. Prefer the KHDP_APP_SECRET env var
-# / OS keychain over a plaintext file.
-# app_secret = ""
-
 # Personal API key (`khdp_pat_*`) issued from KHDP Settings → Account →
 # API Token. Sent as `Authorization: Bearer <api_key>`; long-lived, no
 # PKCE refresh needed (`khdp api ... --auth api-key`). Equivalent env

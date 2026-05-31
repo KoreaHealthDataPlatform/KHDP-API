@@ -12,7 +12,7 @@ Follows the [agents.md](https://agents.md) convention.
 - **MCP server** — `khdp mcp` (stdio) so any MCP-aware agent gets the same
   authenticated tools.
 
-For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors)
+For the underlying HTTP API (endpoints, OAuth, scopes, errors)
 **fetch the machine-readable OpenAPI 3.1 spec at <https://khdp.ai/openapi.json>**
 or browse the human-readable Redoc page at <https://khdp.ai/docs>. This
 file is about *driving the connector*.
@@ -36,9 +36,11 @@ file is about *driving the connector*.
    tool call.
 3. If `is_expired=true` and `has_refresh_token=true`, call `khdp_auth_refresh`
    (or `khdp refresh`).
-4. For **bot / server / shared headless** work against public datasets,
-   set `KHDP_APP_SECRET` and call with `auth="app_key"` — this
-   authenticates the *app*, not a user.
+4. *(Advanced)* App-developer credentials (`X-App-Id` + `X-App-Secret`,
+   `--auth app-key`) exist for headless/server-to-server work but are
+   **not part of the public agent surface** — they're confusing for
+   end users and are reserved for ops-coordinated integrations. Stick
+   to OAuth or PAT for everything user-facing.
 5. Make KHDP calls via `khdp_api_request` (MCP) / `khdp api …` (CLI), or
    the typed subcommands (`khdp datasets …`, `khdp submissions …`).
 6. Treat all dataset content as PHI-equivalent (see [Conventions](#conventions)).
@@ -60,7 +62,6 @@ Resolution order (highest first):
 ```toml
 # ./khdp.local.toml
 app_id   = "00000000-0000-0000-0000-000000000000"
-# app_secret = "..."        # optional: App Key auth (X-App-Id / X-App-Secret)
 # api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
 api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
 ```
@@ -68,8 +69,8 @@ api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
 | Env var | Purpose |
 | --- | --- |
 | `KHDP_APP_ID` | registered app UUID (defaults to the official KHDP CLI app) |
-| `KHDP_APP_SECRET` | App Key secret → headless `X-App-Id`/`X-App-Secret` auth |
 | `KHDP_PAT` | personal access token (`khdp_pat_…`) → `Authorization: Bearer`. **Canonical** env var |
+| `KHDP_APP_SECRET` | *(advanced)* app-developer headless auth; not part of the public surface |
 | `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
 | `KHDP_API_BASE` | API base (default `https://khdp.ai/v1`, an alias of `https://khdp.net/_api`) |
 | `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (defaults to `https://khdp.net/external/oauth-login`) |
@@ -187,8 +188,10 @@ with Session.open() as s:
     r = s.authed_request("GET", "/datasets/KHDP-OPEN-001/latest/files",
                          auth="oauth")
 
-    # App Key — `X-App-Id` / `X-App-Secret`; authenticates the app
-    r = s.authed_request("GET", "/datasets", auth="app_key")
+    # (Advanced) App Key — `X-App-Id` / `X-App-Secret`; authenticates the
+    # app, not a user. Not part of the public surface; reserved for
+    # ops-coordinated server-to-server integrations.
+    # r = s.authed_request("GET", "/datasets", auth="app_key")
 
     # API Key — `Authorization: Bearer <KHDP_TOKEN>`, no PKCE refresh
     r = s.authed_request("GET", "/datasets", auth="api_key")
