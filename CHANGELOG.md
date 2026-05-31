@@ -8,6 +8,18 @@ and uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`archive` block on dataset detail and file-listing responses** — when
+  a pre-built zip exists for the requested version, `GET /v1/datasets/
+  {code}/{version}` and `.../files` now include an `archive` object
+  describing the download. Bearer-authenticated callers get the
+  presigned `url` (plus `expiresAt` and `sizeBytes` when the backend
+  supplies them); anonymous callers see `available: true` but no URL.
+  When no zip exists or the requested version isn't the latest
+  published, `archive` is `{ available: false, format: "zip" }`. The
+  Worker resolves `cvId` via the backend's `/dataset/code/{code}` lookup
+  and calls `/files/compress-check` and (auth-gated) `/files/compress-
+  link` in parallel with the primary request — no separate endpoint
+  needed.
 - **`/v1/me` and `/v1/me/balance`** — read-only account endpoints
   exposed through the gateway. Worker rewrites `/v1/me` →
   `/_api/member/profile` and `/v1/me/balance` → `/_api/credit/my-balance`
