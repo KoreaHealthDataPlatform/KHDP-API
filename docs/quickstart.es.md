@@ -69,7 +69,7 @@ La misma llamada desde Python:
 from khdp import Session
 
 with Session.open() as s:
-    r = s.request("GET", "/open/datasets", params={"query": "heart", "limit": 5})
+    r = s.request("GET", "/datasets", params={"query": "heart", "limit": 5})
     for d in r.json()["items"]:
         print(d["code"], "—", d["title"])
 ```
@@ -135,7 +135,7 @@ El mismo servidor MCP da soporte a [OpenAI Codex CLI](../wrappers/codex/), [Gemi
 
 ## Qué leer a continuación
 
-- [Referencia de la API REST](./REST_API.md) — cada endpoint, payload, scope y error (en inglés)
+- [Referencia de la API (Redoc)](https://khdp.ai/docs) — cada endpoint, payload, scope y error (spec legible por máquinas en <https://khdp.ai/openapi.json>)
 - [`AGENTS.md`](../AGENTS.md) — usar el conector desde un agente de codificación en profundidad (en inglés)
 - [Especificación canónica KHDP](https://khdp.net/docs/external-api) — sitio oficial
 - [Modelo de seguridad](../SECURITY.md) — PKCE, redirección loopback, almacenamiento de tokens, modelo de amenazas (en inglés)

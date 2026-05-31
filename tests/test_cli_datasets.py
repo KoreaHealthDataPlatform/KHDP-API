@@ -75,7 +75,7 @@ def test_datasets_list_default_table(
     env: None, httpx_mock: Any, capsys: pytest.CaptureFixture[str],
 ) -> None:
     httpx_mock.add_response(
-        url=f"{_API}/open/datasets?page=1&limit=10",
+        url=f"{_API}/datasets?page=1&limit=10",
         method="GET",
         json={
             "totalCnt": 1, "totalPage": 1, "page": 1, "limit": 10,
@@ -99,7 +99,7 @@ def test_datasets_list_json_mode(
     env: None, httpx_mock: Any, capsys: pytest.CaptureFixture[str],
 ) -> None:
     httpx_mock.add_response(
-        url=f"{_API}/open/datasets?page=1&limit=10",
+        url=f"{_API}/datasets?page=1&limit=10",
         method="GET",
         json={"totalCnt": 0, "totalPage": 1, "page": 1, "limit": 10, "data": []},
     )
@@ -113,7 +113,7 @@ def test_datasets_show_uses_at_latest_by_default(
     env: None, httpx_mock: Any, capsys: pytest.CaptureFixture[str],
 ) -> None:
     httpx_mock.add_response(
-        url=f"{_API}/open/datasets/vitaldb_open/latest",
+        url=f"{_API}/datasets/vitaldb_open/latest",
         method="GET",
         json={"code": "vitaldb_open", "version": "1.0.0", "accessPolicy": "open"},
     )
@@ -127,7 +127,7 @@ def test_datasets_download_link_prints_url(
     env: None, httpx_mock: Any, capsys: pytest.CaptureFixture[str],
 ) -> None:
     httpx_mock.add_response(
-        url=f"{_API}/open/datasets/vitaldb_open/1.0.0/files/download-link?key=imaging%2Fa.dcm",
+        url=f"{_API}/datasets/vitaldb_open/1.0.0/files/download-link?key=imaging%2Fa.dcm",
         method="GET",
         json={"url": "https://s3.example/signed-url"},
     )
@@ -148,7 +148,7 @@ def test_datasets_download_dry_run_paginates_with_continue_token(
     # First page returns a continueToken so the CLI fetches a second page.
     httpx_mock.add_response(
         url=(
-            f"{_API}/open/datasets/vitaldb_open/1.0.0/files-download-link-all"
+            f"{_API}/datasets/vitaldb_open/1.0.0/files-download-link-all"
         ),
         method="GET",
         json={
@@ -161,7 +161,7 @@ def test_datasets_download_dry_run_paginates_with_continue_token(
     )
     httpx_mock.add_response(
         url=(
-            f"{_API}/open/datasets/vitaldb_open/1.0.0/files-download-link-all"
+            f"{_API}/datasets/vitaldb_open/1.0.0/files-download-link-all"
             f"?continueToken=TOK"
         ),
         method="GET",
@@ -197,7 +197,7 @@ def test_datasets_download_max_pages_stops_early(
 ) -> None:
     httpx_mock.add_response(
         url=(
-            f"{_API}/open/datasets/vitaldb_open/1.0.0/files-download-link-all"
+            f"{_API}/datasets/vitaldb_open/1.0.0/files-download-link-all"
         ),
         method="GET",
         json={

@@ -106,8 +106,8 @@ def test_authed_request_app_key_headers(tmp_path: Path, httpx_mock) -> None:
         assert "authorization" not in request.headers
         return httpx.Response(200, json={"ok": True})
 
-    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
-    assert s.authed_request("GET", "/open/datasets", auth="app_key").status_code == 200
+    httpx_mock.add_callback(_check, url="https://api.example/_api/datasets")
+    assert s.authed_request("GET", "/datasets", auth="app_key").status_code == 200
 
 
 def test_authed_request_auto_falls_back_to_app_key(tmp_path: Path, httpx_mock) -> None:
@@ -118,8 +118,8 @@ def test_authed_request_auto_falls_back_to_app_key(tmp_path: Path, httpx_mock) -
         assert request.headers["x-app-id"] == "APP"
         return httpx.Response(200, json={"ok": True})
 
-    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
-    assert s.authed_request("GET", "/open/datasets").status_code == 200
+    httpx_mock.add_callback(_check, url="https://api.example/_api/datasets")
+    assert s.authed_request("GET", "/datasets").status_code == 200
 
 
 def test_authed_request_api_key_sends_bearer(
@@ -133,8 +133,8 @@ def test_authed_request_api_key_sends_bearer(
         assert request.headers["authorization"] == "Bearer khdp_pat_FAKE"
         return httpx.Response(200, json={"ok": True})
 
-    httpx_mock.add_callback(_check, url="https://api.example/_api/open/datasets")
-    assert s.authed_request("GET", "/open/datasets").status_code == 200
+    httpx_mock.add_callback(_check, url="https://api.example/_api/datasets")
+    assert s.authed_request("GET", "/datasets").status_code == 200
 
 
 def test_status_reflects_api_key(tmp_path: Path) -> None:
@@ -154,4 +154,4 @@ def test_resolve_auth_explicit_oauth_ignores_api_key(
     s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
     # api_key is set, but explicit `oauth` should require the PKCE cache.
     with pytest.raises(AuthError):
-        s.authed_request("GET", "/open/datasets", auth="oauth")
+        s.authed_request("GET", "/datasets", auth="oauth")

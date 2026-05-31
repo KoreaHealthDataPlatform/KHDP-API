@@ -22,7 +22,7 @@ def main() -> int:
     args = p.parse_args()
 
     with Session.open() as s:
-        r = s.request("GET", f"/open/datasets/{args.code}/{args.version}")
+        r = s.request("GET", f"/datasets/{args.code}/{args.version}")
 
     if r.status_code == 404:
         print(f"Dataset {args.code}@{args.version} not found.", file=sys.stderr)

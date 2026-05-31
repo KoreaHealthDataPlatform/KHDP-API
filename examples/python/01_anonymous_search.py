@@ -24,7 +24,7 @@ def main() -> int:
     with Session.open() as s:
         r = s.request(
             "GET",
-            "/open/datasets",
+            "/datasets",
             params={"query": args.query, "limit": args.limit},
         )
     r.raise_for_status()

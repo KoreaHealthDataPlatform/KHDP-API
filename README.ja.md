@@ -6,7 +6,7 @@
 
 **Korea Health Data Platform**（韓国医療データプラットフォーム）の開発者向けインターフェイス — `curl`、Python、または任意の AI コーディングエージェントから医療研究データセットを検索・ダウンロード・提出できます。
 
-- REST API は `https://khdp.ai/v1` — [docs/REST_API.md](./docs/REST_API.md) を参照。
+- REST API は `https://khdp.ai/v1` — <https://khdp.ai/docs> を参照。
 - 匿名閲覧が可能。認証（App Key / OAuth / API Token）によりダウンロードと提出が解放されます。
 - 同一の認証セッションが CLI、Python ライブラリ、そして Claude Code・Codex CLI・Cursor・Gemini CLI 向けの MCP サーバーを動かします。
 
@@ -40,7 +40,7 @@ claude mcp add khdp -- khdp-mcp
 ### 4. OpenAI Codex CLI
 [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) を `~/.codex/config.toml` に追記し、一度だけ `khdp login` を実行します。
 
-> 詳しいガイド: [docs/quickstart.ja.md](./docs/quickstart.ja.md)。エンドポイントリファレンス: [docs/REST_API.md](./docs/REST_API.md)。
+> 詳しいガイド: [docs/quickstart.ja.md](./docs/quickstart.ja.md)。エンドポイントリファレンス: <https://khdp.ai/docs>。
 
 ## AI エージェントから使う
 
@@ -129,7 +129,7 @@ Cursor は同じ MCP サーバーを利用します — `mcp.servers` 設定で 
 ## ドキュメント
 
 - [Quickstart](./docs/quickstart.ja.md) — 最初の 5 分
-- [REST API リファレンス](./docs/REST_API.md) — エンドポイント、ペイロード、スコープ、エラー（英語）
+- [REST API リファレンス](https://khdp.ai/docs) — エンドポイント、ペイロード、スコープ、エラー（英語）
 - [`examples/`](./examples/) — 実行可能な Python スクリプト（匿名検索、データセット詳細、認証付きダウンロード）
 - [`AGENTS.md`](./AGENTS.md) — コーディングエージェントから connector を駆動する（英語）
 - [正規仕様](https://khdp.net/docs/external-api) — KHDP 公式ドキュメントサイト

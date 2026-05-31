@@ -7,6 +7,40 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-31
+
+### Changed
+- **API spec is now OpenAPI 3.1**, bundled into the Worker at
+  `openapi/v1.json` and served at <https://khdp.ai/openapi.json>
+  with a Redoc-rendered companion at <https://khdp.ai/docs>. The
+  prose `docs/REST_API.md` is removed.
+- **SDK internal paths switched to short canonical** —
+  `cli_datasets.py`, `cli_submissions.py`, and tests now call
+  `/datasets/*` and `/submissions/*` instead of the legacy
+  `/open/datasets/*` and `/open/dataset-submissions/*`. Consequence:
+  SDK 0.6.0 only works against `https://khdp.ai/v1`; users who pin
+  `KHDP_API_BASE` to the legacy `https://khdp.net/_api` should stay
+  on SDK 0.5.x until that base is deprecated.
+- `AGENTS.md` now tells agents to fetch the OpenAPI spec from
+  <https://khdp.ai/openapi.json> at session start instead of reading
+  the deleted REST_API.md.
+- 5 language READMEs, 5 quickstarts, examples (Python scripts +
+  Colab notebook), and the `examples/README.md` all point at
+  <https://khdp.ai/docs> and <https://khdp.ai/openapi.json>.
+- User-Agent bumped to `khdp/0.6.0`.
+
+### Added
+- `worker/src/index.ts` imports `openapi/v1.json` and serves it at
+  `/openapi.json` + a small Redoc HTML at `/docs` and `/docs/`.
+  Vitest covers both routes.
+
+### Removed
+- `docs/REST_API.md` (replaced by OpenAPI 3.1 spec).
+- `GITHUB_REST_API_RAW` env var from `worker/wrangler.toml`.
+- `/REST_API.md` route from the Worker.
+
+## [Unreleased — pre-0.6.0 worker-only entries]
+
 ### Changed
 - **Legacy long-form paths now hard-rejected.** The Worker returns
   `404 LEGACY_PATH` for `/v1/open/*` and `/v1/external/*` with a

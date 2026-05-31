@@ -69,7 +69,7 @@ Python에서 동일한 호출:
 from khdp import Session
 
 with Session.open() as s:
-    r = s.request("GET", "/open/datasets", params={"query": "heart", "limit": 5})
+    r = s.request("GET", "/datasets", params={"query": "heart", "limit": 5})
     for d in r.json()["items"]:
         print(d["code"], "—", d["title"])
 ```
@@ -135,7 +135,7 @@ Claude Code가 MCP 서버를 호출하고, MCP 서버는 2단계에서 만들어
 
 ## 다음에 읽을 것
 
-- [REST API 레퍼런스](./REST_API.md) — 모든 엔드포인트, 페이로드, 스코프, 에러 (영어)
+- [API 레퍼런스 (Redoc)](https://khdp.ai/docs) — 모든 엔드포인트, 페이로드, 스코프, 에러 (기계 판독 spec: <https://khdp.ai/openapi.json>)
 - [`AGENTS.md`](../AGENTS.md) — 코딩 에이전트로 connector를 자세히 다루기 (영어)
 - [KHDP 공식 사양](https://khdp.net/docs/external-api) — 공식 사이트
 - [보안 모델](../SECURITY.md) — PKCE, loopback redirect, 토큰 저장, 위협 모델 (영어)

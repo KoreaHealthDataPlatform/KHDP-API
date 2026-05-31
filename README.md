@@ -4,7 +4,7 @@
 
 The developer interface for the **Korea Health Data Platform** — search, download, and submit medical research datasets from `curl`, Python, or any AI coding agent.
 
-- REST API at `https://khdp.ai/v1` — see [docs/REST_API.md](./docs/REST_API.md).
+- REST API at `https://khdp.ai/v1` — see <https://khdp.ai/docs>.
 - Anonymous browsing works; authentication (App Key / OAuth / API Token) unlocks downloads and submissions.
 - One authenticated session powers the CLI, Python library, and an MCP server for Claude Code, Codex CLI, Cursor, and Gemini CLI.
 
@@ -38,7 +38,7 @@ Then ask Claude Code: *"Search KHDP for heart-disease datasets and summarize the
 ### 4. OpenAI Codex CLI
 Append [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) to `~/.codex/config.toml`, then `khdp login` once.
 
-> Full walkthrough: [docs/quickstart.en.md](./docs/quickstart.en.md). Endpoint reference: [docs/REST_API.md](./docs/REST_API.md).
+> Full walkthrough: [docs/quickstart.en.md](./docs/quickstart.en.md). Endpoint reference: <https://khdp.ai/docs>.
 
 ## Use it from an AI agent
 
@@ -127,7 +127,7 @@ Cursor uses the same MCP server — point its `mcp.servers` config at `khdp-mcp`
 ## Documentation
 
 - [Quickstart](./docs/quickstart.en.md) — first five minutes
-- [REST API reference](./docs/REST_API.md) — endpoints, payloads, scopes, errors
+- [REST API reference](https://khdp.ai/docs) — endpoints, payloads, scopes, errors
 - [`examples/`](./examples/) — runnable Python scripts (anonymous search, dataset detail, authenticated download)
 - [`AGENTS.md`](./AGENTS.md) — driving the connector from a coding agent
 - [Canonical spec](https://khdp.net/docs/external-api) — official documentation site

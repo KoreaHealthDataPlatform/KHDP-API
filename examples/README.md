@@ -29,4 +29,4 @@ python python/02_dataset_detail.py KHDP-OPEN-001
 python python/03_authenticated_download.py heart --out ./data
 ```
 
-See [`docs/REST_API.md`](../docs/REST_API.md) for every endpoint these scripts touch, and [`docs/quickstart.en.md`](../docs/quickstart.en.md) for a walkthrough that maps these scripts onto the CLI and MCP equivalents.
+See the [API reference (Redoc)](https://khdp.ai/docs) and [OpenAPI spec](https://khdp.ai/openapi.json) for every endpoint these scripts touch, and [`docs/quickstart.en.md`](../docs/quickstart.en.md) for a walkthrough that maps these scripts onto the CLI and MCP equivalents.

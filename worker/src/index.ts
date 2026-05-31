@@ -4,7 +4,8 @@
  * Surfaces:
  *  - GET  /                  → minimal landing page pointing agents at /AGENTS.md
  *  - GET  /AGENTS.md         → mirror of the GitHub-hosted AGENTS.md (60s edge cache)
- *  - GET  /REST_API.md       → mirror of the GitHub-hosted REST_API.md (60s edge cache)
+ *  - GET  /openapi.json      → bundled OpenAPI 3.1 spec for the API
+ *  - GET  /docs              → Redoc HTML rendering /openapi.json
  *  - ANY  /v1/*              → passthrough to the KHDP backend (khdp.net/_api/*)
  *  - GET  /healthz           → liveness probe
  *
@@ -13,9 +14,10 @@
  * storage.
  */
 
+import openapiSpec from "../../openapi/v1.json";
+
 export interface Env {
   GITHUB_AGENTS_RAW: string;
-  GITHUB_REST_API_RAW: string;
   BACKEND_BASE: string;
   WEB_BASE: string;
 }
@@ -48,9 +50,8 @@ export default {
       if (url.pathname === "/AGENTS.md") {
         return mirrorMarkdown(req, ctx, env.GITHUB_AGENTS_RAW);
       }
-      if (url.pathname === "/REST_API.md") {
-        return mirrorMarkdown(req, ctx, env.GITHUB_REST_API_RAW);
-      }
+      if (url.pathname === "/openapi.json") return openapiJson();
+      if (url.pathname === "/docs" || url.pathname === "/docs/") return redocPage();
       if (url.pathname.startsWith("/v1/")) return v1Gateway(req, env, requestId);
       return notFound(requestId);
     } catch (err) {
@@ -256,6 +257,25 @@ function landing(): Response {
   });
 }
 
+function openapiJson(): Response {
+  return new Response(JSON.stringify(openapiSpec, null, 2), {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
+
+function redocPage(): Response {
+  return new Response(REDOC_HTML, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    },
+  });
+}
+
 function notFound(requestId: string): Response {
   return new Response(
     JSON.stringify({
@@ -299,13 +319,28 @@ function json(body: object): Response {
   });
 }
 
+const REDOC_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KHDP Open API for AI Agents — Reference</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body { margin: 0; padding: 0; }</style>
+</head>
+<body>
+<redoc spec-url="/openapi.json"></redoc>
+<script src="https://cdn.redocly.com/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+`;
+
 const LANDING_HTML = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>KHDP — for AI agents</title>
+<title>KHDP Open API for AI Agents</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Korea Health Data Platform — a small REST surface for AI agents and researchers.">
+<meta name="description" content="KHDP Open API for AI Agents — a small REST surface over the Korea Health Data Platform.">
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -317,14 +352,14 @@ const LANDING_HTML = `<!doctype html>
     -webkit-font-smoothing: antialiased;
   }
   main {
-    max-width: 560px;
+    max-width: 620px;
     margin: 0 auto;
     padding: clamp(3rem, 12vh, 9rem) 1.5rem 4rem;
   }
   h1 {
-    font-size: clamp(2.5rem, 7vw, 3.5rem);
+    font-size: clamp(2.25rem, 6.5vw, 3.25rem);
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1.08;
     letter-spacing: -0.02em;
     margin: 0 0 1.25rem;
   }
@@ -379,10 +414,10 @@ const LANDING_HTML = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>KHDP<span class="sub">for AI agents</span></h1>
-  <p class="lede">A small REST surface for medical research.</p>
+  <h1>KHDP Open API<span class="sub">for AI Agents</span></h1>
+  <p class="lede">A small REST surface over the Korea Health Data Platform — datasets, submissions, OAuth — for agents and researchers.</p>
   <p class="cta">
-    <a class="btn" href="https://khdp.net">Sign in with KHDP</a>
+    <a class="btn" href="/docs">View API docs</a>
     <a class="link" href="/AGENTS.md">AGENTS.md</a>
   </p>
 </main>

@@ -17,7 +17,6 @@ function makeCtx(): ExecutionContext {
 
 const env = {
   GITHUB_AGENTS_RAW: "https://example.org/AGENTS.md",
-  GITHUB_REST_API_RAW: "https://example.org/REST_API.md",
   BACKEND_BASE: "https://backend.example/_api",
   WEB_BASE: "https://web.example",
 };
@@ -36,8 +35,12 @@ describe("landing", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toMatch(/text\/html/);
     const body = await res.text();
-    expect(body).toContain("KHDP for AI agents");
+    expect(body).toContain("KHDP Open API");
+    expect(body).toContain("for AI Agents");
+    expect(body).toContain("/docs");
     expect(body).toContain("/AGENTS.md");
+    // No login button on the public landing.
+    expect(body).not.toContain("Sign in");
   });
 });
 
@@ -81,30 +84,51 @@ describe("/AGENTS.md", () => {
   });
 });
 
-describe("/REST_API.md", () => {
-  it("proxies the REST_API mirror from GitHub raw", async () => {
-    const seen: { url: string } = { url: "" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        seen.url = typeof input === "string" ? input : input.toString();
-        return new Response("# KHDP External REST API\n", {
-          status: 200,
-          headers: { "Content-Type": "text/markdown" },
-        });
-      }),
-    );
+describe("/openapi.json", () => {
+  it("serves the bundled OpenAPI 3.1 spec", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/REST_API.md"),
+      new Request("https://khdp.ai/openapi.json"),
       env,
       makeCtx(),
     );
     expect(res.status).toBe(200);
-    expect(seen.url).toBe(env.GITHUB_REST_API_RAW);
-    expect(res.headers.get("Content-Type")).toMatch(/text\/markdown/);
-    expect(res.headers.get("X-Source")).toBe(env.GITHUB_REST_API_RAW);
+    expect(res.headers.get("Content-Type")).toMatch(/application\/json/);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    const body = (await res.json()) as {
+      openapi: string;
+      info: { title: string };
+      paths: Record<string, unknown>;
+    };
+    expect(body.openapi).toMatch(/^3\./);
+    expect(body.info.title).toContain("KHDP");
+    expect(Object.keys(body.paths).length).toBeGreaterThan(5);
+    expect(body.paths["/datasets"]).toBeDefined();
+    expect(body.paths["/submissions"]).toBeDefined();
+    expect(body.paths["/oauth/authorize"]).toBeDefined();
+  });
+});
+
+describe("/docs", () => {
+  it("serves the Redoc HTML rendering /openapi.json", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/docs"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toMatch(/text\/html/);
     const body = await res.text();
-    expect(body).toContain("# KHDP External REST API");
+    expect(body).toContain('spec-url="/openapi.json"');
+    expect(body).toContain("redoc.standalone.js");
+  });
+
+  it("also responds at /docs/ (trailing slash)", async () => {
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/docs/"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(200);
   });
 });
 
