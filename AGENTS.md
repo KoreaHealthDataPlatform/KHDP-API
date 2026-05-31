@@ -27,10 +27,11 @@ file is about *driving the connector*.
    (see [Asking the user how to authenticate](#asking-the-user-how-to-authenticate)):
    - **OAuth (browser)** — they run `khdp login`; short-lived token,
      auto-refreshed. Best for interactive sessions.
-   - **PAT** — long-lived `khdp_pat_*` token. Issued from the KHDP web
-     UI (Settings → API Token) and saved via `khdp pat set`, **or**
-     issued directly from CLI via `khdp pat new` after one `khdp login`.
-     Best for notebooks, background work, headless setups.
+   - **PAT** — long-lived `khdp_pat_*` token. **Issued only from the
+     KHDP web UI** at <https://khdp.net> → *Settings → Account → API
+     Token*; the user pastes it back and the agent runs `khdp pat set`
+     to cache it locally. Best for notebooks, background work,
+     headless setups.
    Never try to collect credentials yourself or open a browser from a
    tool call.
 3. If `is_expired=true` and `has_refresh_token=true`, call `khdp_auth_refresh`
@@ -94,13 +95,9 @@ user and let them choose:
 >    cached locally. Short-lived; refreshes automatically.
 >
 > 2. **Personal Access Token (PAT)** — a long-lived `khdp_pat_*` token.
->    Two ways to get one:
->    - **Web UI**: open <https://khdp.net> → *Settings → Account → API
->      Token*, issue/regenerate a token, paste it back to me and I'll
->      run `khdp pat set <token>` to save it.
->    - **CLI**: after one `khdp login`, I'll run `khdp pat new`; the
->      token is issued via OAuth and stored automatically (optionally
->      with `--scopes <s>` / `--expires-in-days N`).
+>    Issuance is web-only: open <https://khdp.net> → *Settings →
+>    Account → API Token*, issue/regenerate a token, paste it back to
+>    me and I'll run `khdp pat set <token>` to save it locally.
 >
 > Which would you like?
 
@@ -120,10 +117,11 @@ After the user chooses:
   then re-check `khdp_auth_status`.
 - **PAT (web-issued)** → ask them to paste the `khdp_pat_…` string; run
   `khdp pat set <token>` for them.
-- **PAT (`khdp pat new`)** → after they run `khdp login`, you can run
-  `khdp pat new` (handles the `409 existingPrefix` conflict by
-  prompting; pass `--yes` to auto-confirm, `--force` to revoke without
-  prompting). The new token lands in keyring/file automatically.
+> Note: an older `khdp pat new` CLI subcommand exists that calls a
+> backend OAuth-protected issuance endpoint. It is **not part of the
+> public API surface** documented in <https://khdp.ai/openapi.json>
+> and may be removed in a future release. New integrations should rely
+> on web-UI-issued PATs.
 
 For one-off shell injection without persisting anything,
 `KHDP_PAT=khdp_pat_… khdp api …` works too (`KHDP_TOKEN` is the legacy
@@ -280,7 +278,7 @@ subcommands. Highlights:
   text, or full rows into the conversation/transcript. Summarize.
 - **Authentication is the user's choice.** If unauthenticated and user
   identity is needed, ask which path they prefer (OAuth via `khdp login`
-  vs. PAT via web UI or `khdp pat new`) — see
+  vs. PAT issued from the KHDP web UI) — see
   [Asking the user how to authenticate](#asking-the-user-how-to-authenticate).
   Do not solicit credentials or open browsers from a tool call.
 - **Read the error `message`.** KHDP returns a structured body
