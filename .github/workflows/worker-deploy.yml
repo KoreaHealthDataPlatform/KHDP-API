@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'worker/**'
+      - 'openapi/**'
       - '.github/workflows/worker-deploy.yml'
   workflow_dispatch:
 
