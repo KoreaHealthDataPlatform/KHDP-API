@@ -268,6 +268,13 @@ subcommands. Highlights:
   `datasets` scope).
 - `GET /datasets/:code/:version/files-download-link-all` — bulk
   presigned download URLs (Open-policy datasets only).
+- **`archive`** — both `/datasets/:code/:version` and
+  `/datasets/:code/:version/files` carry an `archive` block when a
+  pre-built zip exists for the latest published version. Bearer-
+  authenticated callers receive `archive.url` (presigned, ready to
+  fetch); anonymous callers see only `archive.available`. Prefer the
+  zip over `files-download-link-all` when present — one request, one
+  download.
 - `GET /submissions` and friends — the user's own submissions
   (OAuth identity required).
 

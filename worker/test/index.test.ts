@@ -166,16 +166,35 @@ describe("/v1/* gateway canonical aliases", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
-  it("/v1/datasets/KHDP-001/latest/files → /_api/open/datasets/KHDP-001/latest/files", async () => {
-    const { seen } = stubUpstream();
-    await worker.fetch(
+  it("/v1/datasets/KHDP-001/latest/files → calls /_api/open/datasets/.../files (with archive enrichment fetches)", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const u = typeof input === "string" ? input : input.toString();
+        calls.push(u);
+        // Internal lookup: no cvId → archive enrichment short-circuits.
+        if (u.endsWith("/dataset/code/KHDP-001")) {
+          return new Response(JSON.stringify({ ciCode: "KHDP-001" }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ subDirs: [], contents: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+    const res = await worker.fetch(
       new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files?key=imaging/"),
       env,
       makeCtx(),
     );
-    expect(seen.url).toBe(
+    expect(res.status).toBe(200);
+    expect(calls).toContain(
       "https://backend.example/_api/open/datasets/KHDP-001/latest/files?key=imaging/",
     );
+    expect(calls).toContain("https://backend.example/_api/dataset/code/KHDP-001");
+    const body = (await res.json()) as { archive: { available: boolean; format: string } };
+    expect(body.archive).toEqual({ available: false, format: "zip" });
   });
 
   it("/v1/submissions → /_api/open/dataset-submissions", async () => {
@@ -284,6 +303,101 @@ describe("unknown paths", () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as { errorCode: string };
     expect(body.errorCode).toBe("NOT_FOUND");
+  });
+});
+
+describe("archive enrichment", () => {
+  function stubBackend(handlers: Record<string, (init?: RequestInit) => Response | Promise<Response>>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const u = typeof input === "string" ? input : input.toString();
+        for (const [pattern, handler] of Object.entries(handlers)) {
+          if (u.includes(pattern)) return handler(init);
+        }
+        return new Response("not stubbed: " + u, { status: 500 });
+      }),
+    );
+  }
+
+  it("attaches available=false when no zip exists", async () => {
+    stubBackend({
+      "/open/datasets/INSPIRE/1.3":
+        () => new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 }),
+      "/dataset/code/INSPIRE":
+        () => new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 }),
+      "/dataset/660/files/compress-check":
+        () => new Response(JSON.stringify({ isExist: false }), { status: 200 }),
+    });
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3"),
+      env,
+      makeCtx(),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { archive: { available: boolean; format: string } };
+    expect(body.archive).toEqual({ available: false, format: "zip" });
+  });
+
+  it("anonymous + zip exists → available=true but no URL", async () => {
+    stubBackend({
+      "/open/datasets/INSPIRE/1.3":
+        () => new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 }),
+      "/dataset/code/INSPIRE":
+        () => new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 }),
+      "/dataset/660/files/compress-check":
+        () => new Response(JSON.stringify({ isExist: true }), { status: 200 }),
+    });
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3"),
+      env,
+      makeCtx(),
+    );
+    const body = (await res.json()) as { archive: { available: boolean; url?: string } };
+    expect(body.archive.available).toBe(true);
+    expect(body.archive.url).toBeUndefined();
+  });
+
+  it("bearer + zip exists → archive.url is the presigned link", async () => {
+    stubBackend({
+      "/open/datasets/INSPIRE/1.3":
+        () => new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 }),
+      "/dataset/code/INSPIRE":
+        () => new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 }),
+      "/dataset/660/files/compress-check":
+        () => new Response(JSON.stringify({ isExist: true }), { status: 200 }),
+      "/dataset/660/files/compress-link":
+        () => new Response(JSON.stringify({ url: "https://obj.example/INSPIRE.zip?sig=abc", expiresAt: "2026-06-01T00:00:00Z", sizeBytes: 1234567 }), { status: 200 }),
+    });
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3", {
+        headers: { Authorization: "Bearer khdp_pat_abc" },
+      }),
+      env,
+      makeCtx(),
+    );
+    const body = (await res.json()) as { archive: { available: boolean; url: string; expiresAt: string; sizeBytes: number; format: string } };
+    expect(body.archive.available).toBe(true);
+    expect(body.archive.url).toBe("https://obj.example/INSPIRE.zip?sig=abc");
+    expect(body.archive.expiresAt).toBe("2026-06-01T00:00:00Z");
+    expect(body.archive.sizeBytes).toBe(1234567);
+    expect(body.archive.format).toBe("zip");
+  });
+
+  it("requested version != latest → archive omitted (available=false)", async () => {
+    stubBackend({
+      "/open/datasets/INSPIRE/1.2":
+        () => new Response(JSON.stringify({ code: "INSPIRE", version: "1.2", title: "X", accessPolicy: "open" }), { status: 200 }),
+      "/dataset/code/INSPIRE":
+        () => new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 }),
+    });
+    const res = await worker.fetch(
+      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.2"),
+      env,
+      makeCtx(),
+    );
+    const body = (await res.json()) as { archive: { available: boolean } };
+    expect(body.archive.available).toBe(false);
   });
 });
 

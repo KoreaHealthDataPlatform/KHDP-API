@@ -96,7 +96,7 @@
           { "name": "key", "in": "query", "schema": { "type": "string" }, "description": "Directory prefix; empty/absent for root." }
         ],
         "responses": {
-          "200": { "description": "File list.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } } } } },
+          "200": { "description": "File list.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FileListing" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "403": { "$ref": "#/components/responses/Forbidden" }
         }
@@ -366,7 +366,29 @@
           "summary":      { "type": "string" },
           "version":      { "type": "string",  "example": "1.0.0" },
           "accessPolicy": { "type": "string",  "enum": ["open", "restricted", "credentialed", "contributor_review"] },
-          "publishedAt":  { "type": "string",  "format": "date-time" }
+          "publishedAt":  { "type": "string",  "format": "date-time" },
+          "archive":      { "$ref": "#/components/schemas/Archive" }
+        }
+      },
+      "Archive": {
+        "type": "object",
+        "description": "Pre-built zip download for the whole dataset version. The gateway attaches this block to dataset detail and file-listing responses so callers don't need a separate round-trip. `url` is present only when a zip exists and the caller is bearer-authenticated; anonymous callers see `available: true` but no URL.",
+        "required": ["available", "format"],
+        "properties": {
+          "available": { "type": "boolean", "description": "`true` when a pre-built zip exists for this version." },
+          "format":    { "type": "string",  "enum": ["zip"] },
+          "url":       { "type": "string",  "format": "uri", "description": "Presigned URL for direct download. Bearer-authenticated callers only." },
+          "expiresAt": { "type": "string",  "format": "date-time" },
+          "sizeBytes": { "type": "integer", "format": "int64" }
+        }
+      },
+      "FileListing": {
+        "type": "object",
+        "description": "One directory level of a dataset. `subDirs` lists immediate child directories; `contents` lists files at the current `key` prefix. `archive` mirrors the block on the dataset detail endpoint.",
+        "properties": {
+          "subDirs":  { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" } } } },
+          "contents": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } },
+          "archive":  { "$ref": "#/components/schemas/Archive" }
         }
       },
       "DatasetPage": {

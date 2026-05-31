@@ -111,6 +111,19 @@ async function v1Gateway(
   const legacy = legacyHint(tail);
   if (legacy) return legacyReject(legacy, requestId);
 
+  // Dataset detail / files listing: enrich the response with `archive`
+  // (presigned zip download URL when one exists) by piggy-backing extra
+  // backend calls on the same request. The Worker stays the only place
+  // that knows the short canonical → long backend mapping.
+  const detailMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)$/);
+  if (detailMatch && req.method === "GET") {
+    return enrichDatasetDetail(req, env, requestId, detailMatch[1], detailMatch[2]);
+  }
+  const filesMatch = tail.match(/^\/datasets\/([^/]+)\/([^/]+)\/files$/);
+  if (filesMatch && req.method === "GET") {
+    return enrichDatasetFiles(req, env, requestId, filesMatch[1], filesMatch[2], url.search);
+  }
+
   if (tail === "/datasets" || tail.startsWith("/datasets/")) {
     tail = "/open/datasets" + tail.slice("/datasets".length);
   } else if (tail === "/submissions" || tail.startsWith("/submissions/")) {
@@ -217,6 +230,200 @@ function legacyReject(
       },
     },
   );
+}
+
+interface ArchiveBlock {
+  available: boolean;
+  format: "zip";
+  url?: string;
+  expiresAt?: string;
+  sizeBytes?: number;
+}
+
+/**
+ * GET /v1/datasets/{code}/{version}
+ *
+ * Proxy the public detail call, but in parallel resolve cvId via the
+ * internal `/dataset/code/{code}` lookup so we can attach an `archive`
+ * field describing the pre-built zip download. Bearer-authed callers get
+ * a presigned URL; anonymous callers only see whether one is available.
+ */
+async function enrichDatasetDetail(
+  req: Request,
+  env: Env,
+  requestId: string,
+  code: string,
+  version: string,
+): Promise<Response> {
+  const backend = env.BACKEND_BASE.replace(/\/$/, "");
+  const fwdHeaders = passthroughHeaders(req.headers);
+  fwdHeaders.set("X-Request-Id", requestId);
+
+  const [publicResp, internalResp] = await Promise.all([
+    fetch(`${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}`, {
+      headers: fwdHeaders,
+      redirect: "manual",
+    }),
+    fetch(`${backend}/dataset/code/${encodeURIComponent(code)}`, {
+      headers: new Headers({ "X-Request-Id": requestId }),
+      redirect: "manual",
+    }),
+  ]);
+
+  if (!publicResp.ok) return forwardResponse(publicResp, requestId);
+
+  const publicBody = (await publicResp.json()) as Record<string, unknown>;
+  const archive = await resolveArchive(req, env, requestId, internalResp, version);
+  publicBody.archive = archive;
+
+  return new Response(JSON.stringify(publicBody, null, 2), {
+    status: 200,
+    headers: jsonResponseHeaders(requestId),
+  });
+}
+
+/**
+ * GET /v1/datasets/{code}/{version}/files
+ *
+ * Backend file listing always requires auth, so this enrichment runs
+ * after we've confirmed the user has access. The `archive` block here
+ * always carries the presigned URL when zip exists.
+ */
+async function enrichDatasetFiles(
+  req: Request,
+  env: Env,
+  requestId: string,
+  code: string,
+  version: string,
+  search: string,
+): Promise<Response> {
+  const backend = env.BACKEND_BASE.replace(/\/$/, "");
+  const fwdHeaders = passthroughHeaders(req.headers);
+  fwdHeaders.set("X-Request-Id", requestId);
+
+  const [filesResp, internalResp] = await Promise.all([
+    fetch(`${backend}/open/datasets/${encodeURIComponent(code)}/${encodeURIComponent(version)}/files${search}`, {
+      headers: fwdHeaders,
+      redirect: "manual",
+    }),
+    fetch(`${backend}/dataset/code/${encodeURIComponent(code)}`, {
+      headers: new Headers({ "X-Request-Id": requestId }),
+      redirect: "manual",
+    }),
+  ]);
+
+  if (!filesResp.ok) return forwardResponse(filesResp, requestId);
+
+  const filesBody = (await filesResp.json()) as Record<string, unknown>;
+  const archive = await resolveArchive(req, env, requestId, internalResp, version);
+  filesBody.archive = archive;
+
+  return new Response(JSON.stringify(filesBody, null, 2), {
+    status: 200,
+    headers: jsonResponseHeaders(requestId),
+  });
+}
+
+/**
+ * Build the archive block: compress-check tells us if a zip exists;
+ * compress-link (Bearer required) yields the presigned URL.
+ * On any error we silently emit `available: false` rather than break
+ * the parent response — the caller's primary request must succeed.
+ */
+async function resolveArchive(
+  req: Request,
+  env: Env,
+  requestId: string,
+  internalResp: Response,
+  version: string,
+): Promise<ArchiveBlock> {
+  const empty: ArchiveBlock = { available: false, format: "zip" };
+  if (!internalResp.ok) return empty;
+
+  let internal: Record<string, unknown>;
+  try {
+    internal = (await internalResp.json()) as Record<string, unknown>;
+  } catch {
+    return empty;
+  }
+
+  const cvId = internal.cvId;
+  const metaVersion = internal.version;
+  if (typeof cvId !== "number") return empty;
+  // The backend's `dataset/code/{code}` only carries cvId for the latest
+  // published version. Accept "latest" or the matching version string.
+  if (version !== "latest" && version !== metaVersion) return empty;
+
+  const backend = env.BACKEND_BASE.replace(/\/$/, "");
+  let exists = false;
+  try {
+    const checkResp = await fetch(`${backend}/dataset/${cvId}/files/compress-check`, {
+      headers: new Headers({ "X-Request-Id": requestId }),
+    });
+    if (checkResp.ok) {
+      const checkBody = (await checkResp.json()) as { isExist?: boolean };
+      exists = !!checkBody.isExist;
+    }
+  } catch {
+    return empty;
+  }
+
+  if (!exists) return empty;
+
+  const auth = req.headers.get("authorization");
+  if (!auth) return { available: true, format: "zip" };
+
+  try {
+    const linkResp = await fetch(`${backend}/dataset/${cvId}/files/compress-link`, {
+      headers: new Headers({
+        Authorization: auth,
+        "X-Request-Id": requestId,
+      }),
+    });
+    if (!linkResp.ok) return { available: true, format: "zip" };
+    const link = (await linkResp.json()) as Record<string, unknown>;
+    const url =
+      typeof link.url === "string" ? link.url :
+      typeof link.downloadUrl === "string" ? link.downloadUrl :
+      typeof link.compressLink === "string" ? link.compressLink :
+      undefined;
+    if (!url) return { available: true, format: "zip" };
+    const out: ArchiveBlock = { available: true, format: "zip", url };
+    const expiresAt =
+      typeof link.expiresAt === "string" ? link.expiresAt :
+      typeof link.expireAt === "string" ? link.expireAt :
+      undefined;
+    if (expiresAt) out.expiresAt = expiresAt;
+    const sizeBytes =
+      typeof link.sizeBytes === "number" ? link.sizeBytes :
+      typeof link.size === "number" ? link.size :
+      undefined;
+    if (typeof sizeBytes === "number") out.sizeBytes = sizeBytes;
+    return out;
+  } catch {
+    return { available: true, format: "zip" };
+  }
+}
+
+function forwardResponse(upstream: Response, requestId: string): Response {
+  const headers = passthroughResponseHeaders(upstream.headers);
+  headers.set("X-Request-Id", requestId);
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id");
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
+}
+
+function jsonResponseHeaders(requestId: string): Headers {
+  return new Headers({
+    "Content-Type": "application/json; charset=utf-8",
+    "X-Request-Id": requestId,
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "X-Request-Id",
+  });
 }
 
 function passthroughHeaders(input: Headers): Headers {
