@@ -338,9 +338,9 @@ const LANDING_HTML = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Open KHDP API for AI Agents</title>
+<title>KHDP Open API for AI Agents</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Open KHDP API for AI Agents — a small REST surface over the Korea Health Data Platform.">
+<meta name="description" content="KHDP Open API for AI Agents — a small REST surface over the Korea Health Data Platform.">
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -414,7 +414,7 @@ const LANDING_HTML = `<!doctype html>
 </head>
 <body>
 <main>
-  <h1>Open KHDP API<span class="sub">for AI Agents</span></h1>
+  <h1>KHDP Open API<span class="sub">for AI Agents</span></h1>
   <p class="lede">A small REST surface over the Korea Health Data Platform — datasets, submissions, OAuth — for agents and researchers.</p>
   <p class="cta">
     <a class="btn" href="/docs">View API docs</a>

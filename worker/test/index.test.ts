@@ -35,7 +35,7 @@ describe("landing", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toMatch(/text\/html/);
     const body = await res.text();
-    expect(body).toContain("Open KHDP API");
+    expect(body).toContain("KHDP Open API");
     expect(body).toContain("for AI Agents");
     expect(body).toContain("/docs");
     expect(body).toContain("/AGENTS.md");
