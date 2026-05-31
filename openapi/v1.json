@@ -1,0 +1,467 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KHDP Open API for AI Agents",
+    "version": "1.0.0",
+    "summary": "Search, download, and submit Korea Health Data Platform datasets — built for AI coding agents and external developers.",
+    "description": "Machine-readable spec for the public KHDP API served at https://khdp.ai/v1. Companion human guide for agents: https://khdp.ai/AGENTS.md\n\n## Authentication\n\nThree credential types, interchangeable across all endpoints unless noted:\n\n- **App Key** — `X-App-Id` + `X-App-Secret`. Authenticates the *app*; public dataset browsing only.\n- **OAuth (PKCE)** — `Authorization: Bearer <jwt>`. Authenticates a *user*; required for `Submissions` and PAT issuance.\n- **Personal Access Token (PAT)** — `Authorization: Bearer khdp_pat_…`. Long-lived user token issued from the KHDP web UI or `POST /oauth/api-tokens`.\n\n## Scopes\n\nThe app issuing the credential must hold the `datasets` scope for file listing and download endpoints — applies to both App Key and OAuth/PAT callers.\n\n## Error model\n\nAll errors share the `Error` schema (see *Components*). 4xx responses carry a human `message`, an optional machine-readable `errorCode`, and a `requestId` (also in the `X-Request-Id` response header) for support traces.",
+    "contact": { "name": "KHDP", "url": "https://khdp.net" },
+    "license": { "name": "MIT", "identifier": "MIT" }
+  },
+  "servers": [
+    { "url": "https://khdp.ai/v1", "description": "Production gateway (Cloudflare-fronted)." }
+  ],
+  "tags": [
+    { "name": "Datasets",    "description": "Public dataset catalog — search, detail, file listing, presigned download URLs." },
+    { "name": "Submissions", "description": "Your own datasets — create, upload files, finalize for review. OAuth/PAT only." },
+    { "name": "OAuth",       "description": "PKCE login, token refresh, and personal-access-token (PAT) issuance." }
+  ],
+  "paths": {
+    "/datasets": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "Search public datasets",
+        "description": "Returns a paginated list of published datasets. Anonymous access OK. File listing and downloads require auth and the `datasets` scope.",
+        "operationId": "listDatasets",
+        "security": [ {}, { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "parameters": [
+          { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Free-text keyword." },
+          { "name": "type", "in": "query", "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true, "description": "Filter by ciType. Repeatable." },
+          { "name": "accessPolicy", "in": "query", "schema": { "type": "array", "items": { "type": "integer", "enum": [0, 1, 2, 3] } }, "style": "form", "explode": true, "description": "0=Open, 1=Restricted, 2=Credentialed, 3=ContributorReview. Repeatable." },
+          { "name": "page",  "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DatasetPage" } } }
+          }
+        }
+      }
+    },
+    "/datasets/{code}/{version}": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "Get dataset metadata",
+        "description": "Full metadata for a published dataset version. Use `latest` for the most recent.",
+        "operationId": "getDataset",
+        "security": [ {}, { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "responses": {
+          "200": { "description": "Dataset detail.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Dataset" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/datasets/{code}/{version}/files": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "List files in a dataset version",
+        "description": "Requires the `datasets` scope on the calling app/credential.",
+        "operationId": "listDatasetFiles",
+        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "key", "in": "query", "schema": { "type": "string" }, "description": "Directory prefix; empty/absent for root." }
+        ],
+        "responses": {
+          "200": { "description": "File list.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/datasets/{code}/{version}/files/download-link": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "Get a single presigned download URL",
+        "description": "Open-policy datasets only — others return `400 Is Not Open Access Dataset`. The presigned URL is fetched directly from the origin object store; bytes do not transit the gateway.",
+        "operationId": "getDownloadLink",
+        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Full file key (e.g. `imaging/scan001.dcm`)." }
+        ],
+        "responses": {
+          "200": { "description": "Presigned URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/datasets/{code}/{version}/files-download-link-all": {
+      "get": {
+        "tags": ["Datasets"],
+        "summary": "Get presigned download URLs for every file (bulk, paginated)",
+        "description": "Open-policy datasets only. Cursor-paginated via `continueToken`; the last page returns `continueToken: null`.",
+        "operationId": "listBulkDownloadLinks",
+        "security": [ { "bearerAuth": [] }, { "appIdAuth": [], "appSecretAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "continueToken", "in": "query", "schema": { "type": "string" }, "description": "Cursor from the previous response; omit on the first call." }
+        ],
+        "responses": {
+          "200": { "description": "Page of presigned URLs.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BulkPresignedUrls" } } } }
+        }
+      }
+    },
+    "/submissions": {
+      "get": {
+        "tags": ["Submissions"],
+        "summary": "List your own submissions",
+        "operationId": "listMySubmissions",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Your submissions.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Submission" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Create a new submission (Writing stage)",
+        "operationId": "createSubmission",
+        "security": [ { "bearerAuth": [] } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionCreate" } } } },
+        "responses": {
+          "201": { "description": "Created.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Submission" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "description": "`code` already used.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/submissions/licenses": {
+      "get": {
+        "tags": ["Submissions"],
+        "summary": "List available licenses for submissions",
+        "operationId": "listLicenses",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "License catalog.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/License" } } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}": {
+      "get": {
+        "tags": ["Submissions"],
+        "summary": "Get a single submission you own",
+        "operationId": "getMySubmission",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "responses": {
+          "200": { "description": "Submission detail.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Submission" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files": {
+      "get": {
+        "tags": ["Submissions"],
+        "summary": "List uploaded files",
+        "operationId": "listSubmissionFiles",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "responses": {
+          "200": { "description": "Files.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Submissions"],
+        "summary": "Delete a file from a submission",
+        "description": "Only allowed while the submission is in `writing` stage.",
+        "operationId": "deleteSubmissionFile",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" }, "description": "File key to delete." }
+        ],
+        "responses": { "204": { "description": "Deleted." } }
+      }
+    },
+    "/submissions/{code}/{version}/files/directory": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Create a directory inside the submission",
+        "operationId": "createSubmissionDirectory",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string", "description": "Directory path." } } } } } },
+        "responses": {
+          "201": { "description": "Created." },
+          "409": { "description": "Directory already exists.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files/presigned-url": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Get a presigned PUT URL for uploading a file",
+        "description": "Client then issues `PUT <url>` with the file body. The byte upload does not transit the gateway.",
+        "operationId": "getSubmissionUploadUrl",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string" }, "contentType": { "type": "string" } } } } } },
+        "responses": {
+          "200": { "description": "Upload URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files/download-url": {
+      "get": {
+        "tags": ["Submissions"],
+        "summary": "Get a presigned download URL for a file you uploaded (verification)",
+        "operationId": "getSubmissionDownloadUrl",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Presigned URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/submit": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Finalize the submission (Writing → review)",
+        "description": "Locks the submission for editing via the API and moves it into the review queue. Further changes must go through the KHDP web UI.",
+        "operationId": "submitSubmission",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "responses": {
+          "200": { "description": "Submitted." },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/oauth/authorize": {
+      "get": {
+        "tags": ["OAuth"],
+        "summary": "PKCE authorize entry point (browser; 302 to login page)",
+        "description": "Browser-facing OAuth/PKCE entry point. The gateway 302-redirects to the KHDP login page at the web root (`khdp.net/external/oauth-login`). After successful login the page redirects back to the registered `redirect_uri` with `?code=...&state=...`.",
+        "operationId": "authorize",
+        "parameters": [
+          { "name": "client_id",             "in": "query", "required": true, "schema": { "type": "string" }, "description": "Registered app UUID." },
+          { "name": "redirect_uri",          "in": "query", "required": true, "schema": { "type": "string", "format": "uri" } },
+          { "name": "code_challenge",        "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "code_challenge_method", "in": "query", "required": true, "schema": { "type": "string", "enum": ["S256"] } },
+          { "name": "state",                 "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "302": { "description": "Redirect to the login UI.", "headers": { "Location": { "schema": { "type": "string", "format": "uri" } } } }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "tags": ["OAuth"],
+        "summary": "Exchange code or refresh token for an access token",
+        "description": "Two grant types: `authorization_code` (after a successful PKCE login) and `refresh_token` (rotation). Refresh tokens are single-use; replace yours with the new one from the response.",
+        "operationId": "token",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": {
+          "oneOf": [
+            { "type": "object", "required": ["grant_type", "code", "code_verifier", "client_id", "redirect_uri"], "properties": {
+              "grant_type":   { "type": "string", "enum": ["authorization_code"] },
+              "code":         { "type": "string" },
+              "code_verifier":{ "type": "string" },
+              "client_id":    { "type": "string" },
+              "redirect_uri": { "type": "string", "format": "uri" }
+            } },
+            { "type": "object", "required": ["grant_type", "refresh_token"], "properties": {
+              "grant_type":    { "type": "string", "enum": ["refresh_token"] },
+              "refresh_token": { "type": "string" }
+            } }
+          ]
+        } } } },
+        "responses": {
+          "200": { "description": "Token pair.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OAuthToken" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/oauth/api-tokens": {
+      "post": {
+        "tags": ["OAuth"],
+        "summary": "Issue a Personal Access Token (PAT) for the current user",
+        "description": "Requires an OAuth bearer token (user identity). Returns the full `plainToken` (`khdp_pat_*`) **once** — store it. KHDP enforces one active PAT per user; if one already exists the call returns `409` with `existingPrefix`. Retry with `?force=true` to revoke the existing PAT and issue a new one atomically.",
+        "operationId": "issueApiToken",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "name": "force", "in": "query", "schema": { "type": "boolean", "default": false }, "description": "Revoke any existing active PAT in place of returning 409." }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": {
+          "name":          { "type": "string", "example": "khdp-cli" },
+          "scopes":        { "type": "array", "items": { "type": "string" }, "description": "Omit for a super-PAT (all scopes the user has)." },
+          "expiresInDays": { "type": "integer", "description": "Optional; default: no expiry." }
+        } } } } },
+        "responses": {
+          "200": { "description": "Issued PAT.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiToken" } } } },
+          "409": { "description": "An active PAT already exists. Retry with `?force=true` to revoke and re-issue.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth":    { "type": "http",   "scheme": "bearer", "bearerFormat": "OAuth JWT or khdp_pat_*", "description": "Either an OAuth/PKCE access token or a personal access token (PAT)." },
+      "appIdAuth":     { "type": "apiKey", "in": "header", "name": "X-App-Id",     "description": "App identifier. Pair with X-App-Secret." },
+      "appSecretAuth": { "type": "apiKey", "in": "header", "name": "X-App-Secret", "description": "App secret. Pair with X-App-Id." }
+    },
+    "parameters": {
+      "DatasetCode":    { "name": "code",    "in": "path", "required": true, "schema": { "type": "string" }, "description": "Dataset code (e.g. `KHDP-OPEN-001`)." },
+      "DatasetVersion": { "name": "version", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Semantic version (e.g. `1.0.0`) or `latest`." }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Authentication failed.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden":    { "description": "Authenticated but missing the required scope, or accessing another user's resource.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound":     { "description": "Resource not found.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "BadRequest":   { "description": "Request validation failed.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["statusCode", "message"],
+        "properties": {
+          "statusCode": { "type": "integer", "example": 403 },
+          "errorCode":  { "type": "string", "description": "Optional machine-readable code (e.g. `LEGACY_PATH`, `MISSING_SCOPE`)." },
+          "message":    { "type": "string" },
+          "path":       { "type": "string" },
+          "timestamp":  { "type": "string", "format": "date-time" },
+          "requestId":  { "type": "string", "description": "Mirror of the `X-Request-Id` response header." }
+        }
+      },
+      "Dataset": {
+        "type": "object",
+        "required": ["code", "title", "version", "accessPolicy"],
+        "properties": {
+          "code":         { "type": "string",  "example": "KHDP-OPEN-001" },
+          "type":         { "type": "string",  "example": "SNUH" },
+          "title":        { "type": "string" },
+          "summary":      { "type": "string" },
+          "version":      { "type": "string",  "example": "1.0.0" },
+          "accessPolicy": { "type": "string",  "enum": ["open", "restricted", "credentialed", "contributor_review"] },
+          "publishedAt":  { "type": "string",  "format": "date-time" }
+        }
+      },
+      "DatasetPage": {
+        "type": "object",
+        "required": ["data", "totalCnt", "page", "limit"],
+        "properties": {
+          "data":      { "type": "array", "items": { "$ref": "#/components/schemas/Dataset" } },
+          "totalCnt":  { "type": "integer" },
+          "totalPage": { "type": "integer" },
+          "page":      { "type": "integer" },
+          "limit":     { "type": "integer" }
+        }
+      },
+      "FileEntry": {
+        "type": "object",
+        "required": ["key"],
+        "properties": {
+          "key":          { "type": "string",  "example": "imaging/scan001.dcm" },
+          "size":         { "type": "integer", "format": "int64" },
+          "mimeType":     { "type": "string" },
+          "lastModified": { "type": "string",  "format": "date-time" }
+        }
+      },
+      "PresignedUrl": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url":       { "type": "string", "format": "uri" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BulkPresignedUrls": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": { "type": "array", "items": {
+            "type": "object",
+            "required": ["key", "url"],
+            "properties": {
+              "key": { "type": "string" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          } },
+          "continueToken": { "type": ["string", "null"], "description": "Cursor for the next page; `null` on the last page." }
+        }
+      },
+      "Submission": {
+        "type": "object",
+        "required": ["code", "version", "stage"],
+        "properties": {
+          "code":         { "type": "string" },
+          "version":      { "type": "string" },
+          "title":        { "type": "string" },
+          "summary":      { "type": "string" },
+          "stage":        { "type": "string", "enum": ["writing", "review", "approved", "rejected"] },
+          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] },
+          "createdAt":    { "type": "string", "format": "date-time" },
+          "updatedAt":    { "type": "string", "format": "date-time" }
+        }
+      },
+      "SubmissionCreate": {
+        "type": "object",
+        "required": ["title", "version", "accessPolicy"],
+        "properties": {
+          "title":        { "type": "string", "maxLength": 200 },
+          "code":         { "type": "string", "description": "Optional; auto-generated if omitted. Must not contain `/ \\ : * ? \" < > |` or whitespace." },
+          "version":      { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "summary":      { "type": "string", "maxLength": 500 },
+          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] }
+        }
+      },
+      "License": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "url":  { "type": "string", "format": "uri" }
+        }
+      },
+      "OAuthToken": {
+        "type": "object",
+        "required": ["access_token", "expires_in"],
+        "properties": {
+          "access_token":  { "type": "string" },
+          "refresh_token": { "type": "string", "description": "Replace yours with this on rotation." },
+          "expires_in":    { "type": "integer", "description": "Seconds until access_token expires." }
+        }
+      },
+      "ApiToken": {
+        "type": "object",
+        "required": ["plainToken", "prefix"],
+        "properties": {
+          "plainToken": { "type": "string", "description": "Full `khdp_pat_…` value. Only returned at issuance." },
+          "prefix":     { "type": "string", "description": "First ~14 chars of plainToken — safe to log/echo." },
+          "scopes":     { "type": "array", "items": { "type": "string" } },
+          "expiresAt":  { "type": ["string", "null"], "format": "date-time" }
+        }
+      }
+    }
+  }
+}

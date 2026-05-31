@@ -6,7 +6,7 @@
 
 **대한민국 의료 데이터 플랫폼(Korea Health Data Platform)** 개발자 인터페이스 — `curl`, Python, 또는 AI 코딩 에이전트에서 의료 연구 데이터셋을 검색·다운로드·제출할 수 있습니다.
 
-- REST API: `https://khdp.ai/v1` — [docs/REST_API.md](./docs/REST_API.md) 참고.
+- REST API: `https://khdp.ai/v1` — <https://khdp.ai/docs> 참고.
 - 익명 조회 가능. 인증(App Key / OAuth / API Token)을 통해 다운로드와 제출이 가능합니다.
 - 동일한 인증 세션이 CLI, Python 라이브러리, 그리고 Claude Code · Codex CLI · Cursor · Gemini CLI용 MCP 서버를 함께 구동합니다.
 
@@ -40,7 +40,7 @@ claude mcp add khdp -- khdp-mcp
 ### 4. OpenAI Codex CLI
 [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml)을 `~/.codex/config.toml`에 추가한 뒤 `khdp login` 한 번 실행.
 
-> 자세한 안내: [docs/quickstart.ko.md](./docs/quickstart.ko.md). 엔드포인트 레퍼런스: [docs/REST_API.md](./docs/REST_API.md).
+> 자세한 안내: [docs/quickstart.ko.md](./docs/quickstart.ko.md). 엔드포인트 레퍼런스: <https://khdp.ai/docs>.
 
 ## AI 에이전트로 사용하기
 
@@ -129,7 +129,7 @@ Cursor는 같은 MCP 서버를 사용합니다 — `mcp.servers` 설정에서 `k
 ## 문서
 
 - [Quickstart](./docs/quickstart.ko.md) — 처음 5분
-- [REST API 레퍼런스](./docs/REST_API.md) — 엔드포인트, 페이로드, 스코프, 에러 (영어)
+- [REST API 레퍼런스](https://khdp.ai/docs) — 엔드포인트, 페이로드, 스코프, 에러 (영어)
 - [`examples/`](./examples/) — 실행 가능한 Python 스크립트 (익명 검색, 데이터셋 상세, 인증 다운로드)
 - [`AGENTS.md`](./AGENTS.md) — 코딩 에이전트에서 connector 다루기 (영어)
 - [공식 사양](https://khdp.net/docs/external-api) — KHDP 공식 문서 사이트

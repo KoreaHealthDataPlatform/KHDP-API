@@ -6,8 +6,9 @@ Cloudflare Worker fronting **`khdp.ai`** — the AI-agent entry point for the Ko
 | --- | --- |
 | `GET /` | Minimal landing page pointing agents at `/AGENTS.md`. |
 | `GET /AGENTS.md` | 60-second edge-cached mirror of [`AGENTS.md`](../AGENTS.md) from this repo's `main`. |
-| `GET /REST_API.md` | 60-second edge-cached mirror of [`docs/REST_API.md`](../docs/REST_API.md) from this repo's `main`. |
-| `ANY /v1/*` | Transparent alias of `khdp.net/_api/*` — `/v1/open/datasets`, `/v1/oauth/token`, `/v1/external/oauth-login` etc. all forward 1:1. Auth headers + query preserved; adds `X-Request-Id`; sets permissive CORS. |
+| `GET /openapi.json` | Bundled [OpenAPI 3.1 spec](../openapi/v1.json) for the API. Updated on every Worker deploy. |
+| `GET /docs` | Redoc HTML page rendering `/openapi.json`. |
+| `ANY /v1/*` | Short-canonical surface. `/v1/datasets/*` → `/_api/open/datasets/*`, `/v1/submissions/*` → `/_api/open/dataset-submissions/*`, `/v1/oauth/authorize` → 302 to `khdp.net/external/oauth-login`. Other `/v1/oauth/*` pass through 1:1. `/v1/open/*` and `/v1/external/*` return `404 LEGACY_PATH`. |
 | `GET /healthz` | Liveness probe. |
 
 Bytes (dataset downloads/uploads) never transit this Worker — KHDP returns presigned URLs that the client fetches directly from the origin object store.
@@ -24,9 +25,10 @@ Try:
 
 ```bash
 curl http://localhost:8787/
-curl http://localhost:8787/AGENTS.md   | head -5
-curl http://localhost:8787/REST_API.md | head -5
-curl 'http://localhost:8787/v1/open/datasets?query=heart&limit=2'
+curl http://localhost:8787/AGENTS.md    | head -5
+curl http://localhost:8787/openapi.json | head -20
+curl http://localhost:8787/docs         | head -10
+curl 'http://localhost:8787/v1/datasets?query=heart&limit=2'
 ```
 
 ## Deploy
@@ -63,8 +65,10 @@ Re-run `npm run deploy`. Wrangler creates the custom-domain binding automaticall
 | Var | Default | Purpose |
 | --- | --- | --- |
 | `GITHUB_AGENTS_RAW` | `raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/AGENTS.md` | Source for `/AGENTS.md` proxy. Point at a tag to pin. |
-| `GITHUB_REST_API_RAW` | `raw.githubusercontent.com/KoreaHealthDataPlatform/khdp-api/main/docs/REST_API.md` | Source for `/REST_API.md` proxy. Point at a tag to pin. |
-| `BACKEND_BASE` | `https://khdp.net/_api` | Upstream the `/v1/*` gateway forwards to (1:1 alias). |
+| `BACKEND_BASE` | `https://khdp.net/_api` | Upstream the `/v1/*` gateway forwards to. |
+| `WEB_BASE` | `https://khdp.net` | Used by the `/v1/oauth/authorize` 302 redirect. |
+
+The OpenAPI spec at `openapi/v1.json` is bundled into the Worker via `import` and served at `/openapi.json`. To update it, edit `openapi/v1.json` and redeploy — the next push to `main` triggers `worker-deploy.yml`.
 
 No secrets are bound today. When per-call PAT introspection or token signing keys land, use `wrangler secret put <NAME>` and reference via `env.<NAME>`.
 

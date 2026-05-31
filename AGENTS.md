@@ -12,8 +12,10 @@ Follows the [agents.md](https://agents.md) convention.
 - **MCP server** — `khdp mcp` (stdio) so any MCP-aware agent gets the same
   authenticated tools.
 
-For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors) see
-[docs/REST_API.md](./docs/REST_API.md). This file is about *driving the connector*.
+For the underlying HTTP API (endpoints, App Key vs OAuth, scopes, errors)
+**fetch the machine-readable OpenAPI 3.1 spec at <https://khdp.ai/openapi.json>**
+or browse the human-readable Redoc page at <https://khdp.ai/docs>. This
+file is about *driving the connector*.
 
 ---
 
@@ -251,9 +253,14 @@ cp -r wrappers/claude-code/skills/khdp-auth ~/.claude/skills/
 
 ## Calling the KHDP API
 
-Endpoint paths, payloads, scopes, and errors live in
-[docs/REST_API.md](./docs/REST_API.md). From an agent you reach them through
-`khdp_api_request` / `khdp api` / the typed subcommands. Highlights:
+Endpoint paths, payloads, scopes, and errors are described by the
+canonical **OpenAPI 3.1** spec at <https://khdp.ai/openapi.json>
+(human-readable Redoc at <https://khdp.ai/docs>). Agents should fetch
+the spec once at session start — it lists every method, parameter,
+required scope, and response schema, including the `Error` shape with
+`statusCode` / `errorCode` / `message` / `requestId`. From an agent
+you reach them through `khdp_api_request` / `khdp api` / the typed
+subcommands. Highlights:
 
 - `GET /datasets` — search public datasets (anonymous OK).
 - `GET /datasets/:code/:version/files` — file list (needs the app's
@@ -311,9 +318,12 @@ src/khdp/
   config.py         # Config + layered load_config()
 wrappers/           # per-agent glue: claude-code (skill), codex, gemini
 docs/
-  REST_API.md       # KHDP external HTTP API reference
   i18n-manifest.json# canonical-EN → translation map (drives i18n stale check)
   example.khdp.local.toml
+  quickstart.{en,ko,es,zh-CN,ja}.md
+openapi/
+  v1.json           # OpenAPI 3.1 spec, served at khdp.ai/openapi.json + khdp.ai/docs
+worker/             # Cloudflare Worker fronting khdp.ai (gateway + spec hosting)
 CHANGELOG.md        # release notes
 ```
 

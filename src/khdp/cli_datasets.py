@@ -1,7 +1,7 @@
 """``khdp datasets`` subcommand group.
 
-Wraps ``/open/datasets/*`` endpoints with arguments friendlier than
-``khdp api GET /open/datasets``. Falls through to the same session
+Wraps ``/datasets/*`` endpoints with arguments friendlier than
+``khdp api GET /datasets``. Falls through to the same session
 machinery, so anonymous and authenticated calls work identically.
 """
 
@@ -175,7 +175,7 @@ def _cmd_list(session: Session, args: argparse.Namespace) -> int:
         params["query"] = args.query
     if args.policy:
         params["accessPolicy"] = _POLICY_TO_QUERY[args.policy]
-    resp = session.request("GET", "/open/datasets", params=params)
+    resp = session.request("GET", "/datasets", params=params)
     body = _try_json(resp)
     if (rc := _check_response(resp, body)) is not None:
         return rc
@@ -188,7 +188,7 @@ def _cmd_list(session: Session, args: argparse.Namespace) -> int:
 
 def _cmd_show(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
-    resp = session.request("GET", f"/open/datasets/{code}/{version}")
+    resp = session.request("GET", f"/datasets/{code}/{version}")
     body = _try_json(resp)
     if (rc := _check_response(resp, body)) is not None:
         return rc
@@ -200,7 +200,7 @@ def _cmd_files(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
     params = {"key": args.key} if args.key else None
     resp = session.authed_request(
-        "GET", f"/open/datasets/{code}/{version}/files", params=params,
+        "GET", f"/datasets/{code}/{version}/files", params=params,
     )
     body = _try_json(resp)
     if (rc := _check_response(resp, body)) is not None:
@@ -216,7 +216,7 @@ def _cmd_download_link(session: Session, args: argparse.Namespace) -> int:
     code, version = _parse_ref(args.ref)
     resp = session.authed_request(
         "GET",
-        f"/open/datasets/{code}/{version}/files/download-link",
+        f"/datasets/{code}/{version}/files/download-link",
         params={"key": args.key},
     )
     body = _try_json(resp)
@@ -257,7 +257,7 @@ def _cmd_download(session: Session, args: argparse.Namespace) -> int:
             params["continueToken"] = cont
         resp = session.authed_request(
             "GET",
-            f"/open/datasets/{code}/{version}/files-download-link-all",
+            f"/datasets/{code}/{version}/files-download-link-all",
             params=params or None,
         )
         body = _try_json(resp)

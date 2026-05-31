@@ -39,7 +39,7 @@ def main() -> int:
         # 1. Find the first Open dataset matching the keyword.
         r = s.request(
             "GET",
-            "/open/datasets",
+            "/datasets",
             params={"query": args.query, "accessPolicy": 0, "limit": 1},
         )
         r.raise_for_status()
@@ -56,7 +56,7 @@ def main() -> int:
         while True:
             params = {"continueToken": continue_token} if continue_token else {}
             r = s.authed_request(
-                "GET", f"/open/datasets/{code}/latest/files-download-link-all",
+                "GET", f"/datasets/{code}/latest/files-download-link-all",
                 params=params,
             )
             r.raise_for_status()

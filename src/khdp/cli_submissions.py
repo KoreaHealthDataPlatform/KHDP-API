@@ -1,6 +1,6 @@
 """``khdp submissions`` subcommand group.
 
-Wraps ``/open/dataset-submissions/*`` endpoints. OAuth-only -- the CLI
+Wraps ``/submissions/*`` endpoints. OAuth-only -- the CLI
 must have a cached user token (``khdp login``).
 
 This module currently exposes only the parser scaffolding; per-command

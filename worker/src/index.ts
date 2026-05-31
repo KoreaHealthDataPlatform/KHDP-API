@@ -4,7 +4,8 @@
  * Surfaces:
  *  - GET  /                  → minimal landing page pointing agents at /AGENTS.md
  *  - GET  /AGENTS.md         → mirror of the GitHub-hosted AGENTS.md (60s edge cache)
- *  - GET  /REST_API.md       → mirror of the GitHub-hosted REST_API.md (60s edge cache)
+ *  - GET  /openapi.json      → bundled OpenAPI 3.1 spec for the API
+ *  - GET  /docs              → Redoc HTML rendering /openapi.json
  *  - ANY  /v1/*              → passthrough to the KHDP backend (khdp.net/_api/*)
  *  - GET  /healthz           → liveness probe
  *
@@ -13,9 +14,10 @@
  * storage.
  */
 
+import openapiSpec from "../../openapi/v1.json";
+
 export interface Env {
   GITHUB_AGENTS_RAW: string;
-  GITHUB_REST_API_RAW: string;
   BACKEND_BASE: string;
   WEB_BASE: string;
 }
@@ -48,9 +50,8 @@ export default {
       if (url.pathname === "/AGENTS.md") {
         return mirrorMarkdown(req, ctx, env.GITHUB_AGENTS_RAW);
       }
-      if (url.pathname === "/REST_API.md") {
-        return mirrorMarkdown(req, ctx, env.GITHUB_REST_API_RAW);
-      }
+      if (url.pathname === "/openapi.json") return openapiJson();
+      if (url.pathname === "/docs" || url.pathname === "/docs/") return redocPage();
       if (url.pathname.startsWith("/v1/")) return v1Gateway(req, env, requestId);
       return notFound(requestId);
     } catch (err) {
@@ -256,6 +257,25 @@ function landing(): Response {
   });
 }
 
+function openapiJson(): Response {
+  return new Response(JSON.stringify(openapiSpec, null, 2), {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
+
+function redocPage(): Response {
+  return new Response(REDOC_HTML, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+    },
+  });
+}
+
 function notFound(requestId: string): Response {
   return new Response(
     JSON.stringify({
@@ -298,6 +318,21 @@ function json(body: object): Response {
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
 }
+
+const REDOC_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KHDP Open API for AI Agents — Reference</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body { margin: 0; padding: 0; }</style>
+</head>
+<body>
+<redoc spec-url="/openapi.json"></redoc>
+<script src="https://cdn.redocly.com/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+`;
 
 const LANDING_HTML = `<!doctype html>
 <html lang="en">
