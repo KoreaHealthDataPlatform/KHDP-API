@@ -12,11 +12,38 @@
     { "url": "https://khdp.ai/v1", "description": "Production gateway (Cloudflare-fronted)." }
   ],
   "tags": [
+    { "name": "Account",     "description": "The authenticated user — profile and credit balance. Read-only. Bearer (OAuth/PAT) required." },
     { "name": "Datasets",    "description": "Public dataset catalog — search, detail, file listing, presigned download URLs." },
     { "name": "Submissions", "description": "Your own datasets — create, upload files, finalize for review. OAuth/PAT only." },
-    { "name": "OAuth",       "description": "PKCE login, token refresh, and personal-access-token (PAT) issuance." }
+    { "name": "OAuth",       "description": "PKCE login and token refresh." }
   ],
   "paths": {
+    "/me": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Get the authenticated user's profile",
+        "description": "Returns the profile of whoever owns the current Bearer token (OAuth or PAT). Useful as a session-start sanity check — confirms auth and identifies the user. Field shape mirrors `nstri-back`'s member.profile response; additional properties may appear.",
+        "operationId": "getMe",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Member profile.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Member" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/me/balance": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Get the authenticated user's credit balance",
+        "description": "Returns the user's current credit balance (issued by the KHDP credit system, used for paid resources). Read-only; charging happens through the web UI.",
+        "operationId": "getMyBalance",
+        "security": [ { "bearerAuth": [] } ],
+        "responses": {
+          "200": { "description": "Credit balance.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreditBalance" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
     "/datasets": {
       "get": {
         "tags": ["Datasets"],
@@ -421,6 +448,29 @@
           "name": { "type": "string" },
           "url":  { "type": "string", "format": "uri" }
         }
+      },
+      "Member": {
+        "type": "object",
+        "description": "Authenticated user's profile as returned by nstri-back's member service. Additional properties may be present.",
+        "properties": {
+          "mId":      { "type": "integer", "description": "Internal numeric member id." },
+          "email":    { "type": "string",  "format": "email" },
+          "name":     { "type": "string" },
+          "userName": { "type": "string", "description": "Display handle, if set." },
+          "joinedAt": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": true
+      },
+      "CreditBalance": {
+        "type": "object",
+        "description": "User's credit balance. Charging happens through the web UI; this is read-only.",
+        "required": ["balance"],
+        "properties": {
+          "balance":   { "type": "string", "description": "Decimal balance (currency = KRW). String to avoid float rounding." },
+          "currency":  { "type": "string", "default": "KRW" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": true
       },
       "OAuthToken": {
         "type": "object",

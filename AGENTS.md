@@ -21,7 +21,7 @@ file is about *driving the connector*.
 
 ## TL;DR for an agent
 
-1. **Check auth first** — `khdp_auth_status` (MCP) or `khdp status` (CLI).
+1. **Check auth first** — `khdp_auth_status` (MCP) or `khdp status` (CLI). Once authenticated, a single `GET /v1/me` confirms identity and `GET /v1/me/balance` shows the user's credit balance — useful as a session-start sanity check.
 2. If `authenticated=false` *and* the work needs user identity,
    **don't silently pick a path — ask the user which they prefer**
    (see [Asking the user how to authenticate](#asking-the-user-how-to-authenticate)):

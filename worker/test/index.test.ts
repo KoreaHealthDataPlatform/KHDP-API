@@ -207,6 +207,30 @@ describe("/v1/* gateway canonical aliases", () => {
     );
   });
 
+  it("/v1/me → /_api/member/profile", async () => {
+    const { seen } = stubUpstream({ mId: 1, email: "a@b.c" });
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/me", {
+        headers: { Authorization: "Bearer khdp_pat_X" },
+      }),
+      env,
+      makeCtx(),
+    );
+    expect(seen.url).toBe("https://backend.example/_api/member/profile");
+  });
+
+  it("/v1/me/balance → /_api/credit/my-balance", async () => {
+    const { seen } = stubUpstream({ balance: "1000" });
+    await worker.fetch(
+      new Request("https://khdp.ai/v1/me/balance", {
+        headers: { Authorization: "Bearer khdp_pat_X" },
+      }),
+      env,
+      makeCtx(),
+    );
+    expect(seen.url).toBe("https://backend.example/_api/credit/my-balance");
+  });
+
   it("/v1/oauth/authorize → 302 redirect to WEB_BASE/external/oauth-login", async () => {
     const res = await worker.fetch(
       new Request(
