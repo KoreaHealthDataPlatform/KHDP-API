@@ -6,7 +6,7 @@
 
 **韩国健康数据平台（Korea Health Data Platform）** 的开发者接口 — 通过 `curl`、Python 或任意 AI 编码代理来检索、下载和提交医学研究数据集。
 
-- REST API 位于 `https://khdp.ai/v1` — 参见 <https://khdp.ai/docs>。
+- REST API 位于 `https://khdp.io/v1` — 参见 <https://khdp.io/docs>。
 - 匿名浏览可用；通过认证（OAuth / API Token）解锁下载和提交。
 - 同一个已认证会话同时驱动 CLI、Python 库以及面向 Claude Code、Codex CLI、Cursor、Gemini CLI 的 MCP 服务器。
 
@@ -16,7 +16,7 @@
 
 ### 1. curl
 ```bash
-curl 'https://khdp.ai/v1/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.io/v1/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python（`khdp` SDK）
@@ -40,13 +40,13 @@ claude mcp add khdp -- khdp-mcp
 ### 4. OpenAI Codex CLI
 将 [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) 追加到 `~/.codex/config.toml`，然后执行一次 `khdp login`。
 
-> 完整指南：[docs/quickstart.zh-CN.md](./docs/quickstart.zh-CN.md)。端点参考：<https://khdp.ai/docs>。
+> 完整指南：[docs/quickstart.zh-CN.md](./docs/quickstart.zh-CN.md)。端点参考：<https://khdp.io/docs>。
 
 ## 从 AI 智能体使用
 
 通过 AI 编码智能体（Claude Code、OpenAI Codex、Google Antigravity、Cursor、Gemini CLI 等）使用 KHDP？将下面这段粘贴给智能体：
 
-> 请阅读 https://khdp.ai/AGENTS.md 并按其说明使用 KHDP API。当需要认证时，请先询问我希望使用 **OAuth（浏览器登录）** 还是 **PAT（个人访问令牌）**。
+> 请阅读 https://khdp.io/AGENTS.md 并按其说明使用 KHDP API。当需要认证时，请先询问我希望使用 **OAuth（浏览器登录）** 还是 **PAT（个人访问令牌）**。
 
 智能体随后会加载 [`AGENTS.md`](./AGENTS.md) — 该文件说明如何安装 `khdp`、与你一起选择认证方式、调用 API、处理错误，并按 PHI 等同方式对待数据集内容。
 
@@ -77,7 +77,7 @@ pipx install 'khdp[keyring]'      # + 使用操作系统密钥环存储令牌
 # ./khdp.local.toml （或 ~/.config/khdp/config.toml）
 app_id     = "00000000-0000-0000-0000-000000000000"
 # api_key    = "khdp_pat_..."    # 个人 API 令牌
-api_base   = "https://khdp.ai/v1"
+api_base   = "https://khdp.io/v1"
 ```
 
 或通过环境变量：`KHDP_APP_ID`、`KHDP_TOKEN`。
@@ -127,7 +127,7 @@ Cursor 使用相同的 MCP 服务器 — 在其 `mcp.servers` 配置中指向 `k
 ## 文档
 
 - [Quickstart](./docs/quickstart.zh-CN.md) — 最初 5 分钟
-- [REST API 参考](https://khdp.ai/docs) — 端点、负载、scope、错误（英文）
+- [REST API 参考](https://khdp.io/docs) — 端点、负载、scope、错误（英文）
 - [`examples/`](./examples/) — 可运行的 Python 脚本（匿名检索、数据集详情、认证下载）
 - [`AGENTS.md`](./AGENTS.md) — 从编码代理驱动 connector（英文）
 - [规范说明](https://khdp.net/docs/external-api) — KHDP 官方文档站点

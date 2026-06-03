@@ -1,5 +1,5 @@
 /**
- * khdp-ai-gateway — Cloudflare Worker fronting `khdp.ai`.
+ * khdp-ai-gateway — Cloudflare Worker fronting `khdp.io`.
  *
  * Surfaces:
  *  - GET  /                  → minimal landing page pointing agents at /AGENTS.md
@@ -240,8 +240,8 @@ function legacyReject(
   requestId: string,
 ): Response {
   const message = hint.canonical
-    ? `${hint.incoming} is not a supported path on khdp.ai. Use ${hint.canonical} instead.`
-    : `${hint.incoming} is not a supported path on khdp.ai. See https://khdp.ai/REST_API.md for the current surface.`;
+    ? `${hint.incoming} is not a supported path on khdp.io. Use ${hint.canonical} instead.`
+    : `${hint.incoming} is not a supported path on khdp.io. See https://khdp.io/REST_API.md for the current surface.`;
   return new Response(
     JSON.stringify(
       {
@@ -438,7 +438,7 @@ async function resolveArchive(
 
   if (!exists) return empty;
 
-  const auth = effectiveBearer(req.headers);
+  const auth = req.headers.get("authorization");
   if (!auth) return { available: true, format: "zip" };
 
   try {
@@ -495,40 +495,16 @@ function jsonResponseHeaders(requestId: string): Headers {
 }
 
 /**
- * Forward client headers to the backend, with two normalizations:
- *  - hop-by-hop headers are stripped
- *  - `X-API-Key: <pat>` is translated to `Authorization: Bearer <pat>`
- *    when no Authorization header is already present. This lets PAT
- *    users send a header that is visually distinct from OAuth Bearer
- *    tokens (a common debugging hint) without the backend needing to
- *    know about a second header.
+ * Forward client headers to the backend, stripping hop-by-hop headers.
+ * Both OAuth and PAT credentials travel as `Authorization: Bearer …`.
  */
 function passthroughHeaders(input: Headers): Headers {
   const out = new Headers();
   for (const [k, v] of input) {
-    const lower = k.toLowerCase();
-    if (HOP_BY_HOP.has(lower)) continue;
-    if (lower === "x-api-key") continue; // dropped; folded into Authorization below
+    if (HOP_BY_HOP.has(k.toLowerCase())) continue;
     out.append(k, v);
   }
-  if (!out.has("authorization")) {
-    const apiKey = input.get("x-api-key");
-    if (apiKey) out.set("Authorization", `Bearer ${apiKey}`);
-  }
   return out;
-}
-
-/**
- * Effective bearer token from the request, accepting either header
- * form. Used to decide whether to fetch a presigned URL (archive),
- * since `req.headers.get("authorization")` alone misses X-API-Key.
- */
-function effectiveBearer(input: Headers): string | null {
-  const auth = input.get("authorization");
-  if (auth) return auth;
-  const apiKey = input.get("x-api-key");
-  if (apiKey) return `Bearer ${apiKey}`;
-  return null;
 }
 
 function passthroughResponseHeaders(input: Headers): Headers {
@@ -550,7 +526,7 @@ function preflight(): Response {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, X-API-Key, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-App-Id, X-App-Secret, Idempotency-Key",
       "Access-Control-Max-Age": "86400",
     },
   });

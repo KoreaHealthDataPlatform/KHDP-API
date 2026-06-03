@@ -4,12 +4,12 @@
     "title": "KHDP Open API for AI Agents",
     "version": "1.0.0",
     "summary": "Search, download, and submit Korea Health Data Platform datasets — built for AI coding agents and external developers.",
-    "description": "Machine-readable spec for the public KHDP API served at https://khdp.ai/v1. Companion human guide for agents: https://khdp.ai/AGENTS.md\n\n## Authentication\n\nTwo credential types, interchangeable across all endpoints unless noted:\n\n- **OAuth (PKCE)** — `Authorization: Bearer <jwt>`. Authenticates a *user*; obtained via the `/oauth/authorize` → `/oauth/token` flow.\n- **Personal Access Token (PAT)** — `Authorization: Bearer khdp_pat_…`. Long-lived user token; issued from the KHDP web UI (Settings → Account → API Token).\n\nAn app-developer credential class (`X-App-Id` + `X-App-Secret`) exists for headless/server-to-server integrations but is **not part of this public surface** — contact KHDP ops if your use case requires it.\n\n## Scopes\n\nThe credential must hold the `datasets` scope for file listing and download endpoints.\n\n## Error model\n\nAll errors share the `Error` schema (see *Components*). 4xx responses carry a human `message`, an optional machine-readable `errorCode`, and a `requestId` (also in the `X-Request-Id` response header) for support traces.\n\n## PAT issuance is web-only\n\nPersonal access tokens are issued from <https://khdp.net> → *Settings → Account → API Token*. There is intentionally no programmatic `POST /oauth/api-tokens` on this public surface — agents should ask the user to paste a token from the web UI.",
+    "description": "Machine-readable spec for the public KHDP API served at https://khdp.io/v1. Companion human guide for agents: https://khdp.io/AGENTS.md\n\n## Authentication\n\nTwo credential types, interchangeable across all endpoints unless noted:\n\n- **OAuth (PKCE)** — `Authorization: Bearer <jwt>`. Authenticates a *user*; obtained via the `/oauth/authorize` → `/oauth/token` flow.\n- **Personal Access Token (PAT)** — `Authorization: Bearer khdp_pat_…`. Long-lived user token; issued from the KHDP web UI (Settings → Account → API Token).\n\nAn app-developer credential class (`X-App-Id` + `X-App-Secret`) exists for headless/server-to-server integrations but is **not part of this public surface** — contact KHDP ops if your use case requires it.\n\n## Scopes\n\nThe credential must hold the `datasets` scope for file listing and download endpoints.\n\n## Error model\n\nAll errors share the `Error` schema (see *Components*). 4xx responses carry a human `message`, an optional machine-readable `errorCode`, and a `requestId` (also in the `X-Request-Id` response header) for support traces.\n\n## PAT issuance is web-only\n\nPersonal access tokens are issued from <https://khdp.net> → *Settings → Account → API Token*. There is intentionally no programmatic `POST /oauth/api-tokens` on this public surface — agents should ask the user to paste a token from the web UI.",
     "contact": { "name": "KHDP", "url": "https://khdp.net" },
     "license": { "name": "MIT", "identifier": "MIT" }
   },
   "servers": [
-    { "url": "https://khdp.ai/v1", "description": "Production gateway (Cloudflare-fronted)." }
+    { "url": "https://khdp.io/v1", "description": "Production gateway (Cloudflare-fronted)." }
   ],
   "tags": [
     { "name": "Account",     "description": "The authenticated user — profile and credit balance. Read-only. Bearer (OAuth/PAT) required." },
@@ -24,7 +24,7 @@
         "summary": "Get the authenticated user's profile",
         "description": "Returns the profile of whoever owns the current Bearer token (OAuth or PAT). Useful as a session-start sanity check — confirms auth and identifies the user. Field shape mirrors `nstri-back`'s member.profile response; additional properties may appear.",
         "operationId": "getMe",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "Member profile.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Member" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
@@ -37,7 +37,7 @@
         "summary": "Get the authenticated user's credit balance",
         "description": "Returns the user's current credit balance (issued by the KHDP credit system, used for paid resources). Read-only; charging happens through the web UI.",
         "operationId": "getMyBalance",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "Credit balance.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreditBalance" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
@@ -50,7 +50,7 @@
         "summary": "Search public datasets",
         "description": "Returns a paginated list of published datasets. Anonymous access OK. File listing and downloads require auth and the `datasets` scope.",
         "operationId": "listDatasets",
-        "security": [ {}, { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ {}, { "bearerAuth": [] } ],
         "parameters": [
           { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Free-text keyword." },
           { "name": "type", "in": "query", "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true, "description": "Filter by ciType. Repeatable." },
@@ -72,7 +72,7 @@
         "summary": "Get dataset metadata",
         "description": "Full metadata for a published dataset version. Use `latest` for the most recent.",
         "operationId": "getDataset",
-        "security": [ {}, { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ {}, { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -89,7 +89,7 @@
         "summary": "List every file in a dataset version (flat, paginated)",
         "description": "Open-policy datasets only. Flat, recursion-free enumeration of every file under the version, with key, size, and a presigned download URL per item — backed by S3 `ListObjectsV2`. Cursor-paginated via `continueToken` (page size 1000); the last page returns `continueToken: null`. Response also carries an `archive` block mirroring the dataset detail endpoint.",
         "operationId": "listDatasetFiles",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -108,7 +108,7 @@
         "summary": "Get a single file's presigned download URL",
         "description": "Open-policy datasets only — others return `400 Is Not Open Access Dataset`. The presigned URL is fetched directly from the origin object store; bytes do not transit the gateway.\n\nNote: `{key}` is the full S3 object key and almost always contains `/` characters (e.g. `imaging/scan001.dcm`). The gateway accepts every path segment after `/files/` as the key, so `GET /v1/datasets/INSPIRE/1.3/files/imaging/scan001.dcm` is the natural form. Clients that URL-encode `/` as `%2F` also work.",
         "operationId": "getDatasetFile",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -126,7 +126,7 @@
         "tags": ["Submissions"],
         "summary": "List your own submissions",
         "operationId": "listMySubmissions",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "Your submissions.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Submission" } } } } }
         }
@@ -135,7 +135,7 @@
         "tags": ["Submissions"],
         "summary": "Create a new submission (Writing stage)",
         "operationId": "createSubmission",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionCreate" } } } },
         "responses": {
           "201": { "description": "Created.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Submission" } } } },
@@ -149,7 +149,7 @@
         "tags": ["Submissions"],
         "summary": "List available licenses for submissions",
         "operationId": "listLicenses",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "responses": {
           "200": { "description": "License catalog.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/License" } } } } }
         }
@@ -160,7 +160,7 @@
         "tags": ["Submissions"],
         "summary": "Get a single submission you own",
         "operationId": "getMySubmission",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -176,7 +176,7 @@
         "tags": ["Submissions"],
         "summary": "List uploaded files",
         "operationId": "listSubmissionFiles",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -190,7 +190,7 @@
         "summary": "Delete a file from a submission",
         "description": "Only allowed while the submission is in `writing` stage.",
         "operationId": "deleteSubmissionFile",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -204,7 +204,7 @@
         "tags": ["Submissions"],
         "summary": "Create a directory inside the submission",
         "operationId": "createSubmissionDirectory",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -222,7 +222,7 @@
         "summary": "Get a presigned PUT URL for uploading a file",
         "description": "Client then issues `PUT <url>` with the file body. The byte upload does not transit the gateway.",
         "operationId": "getSubmissionUploadUrl",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -238,7 +238,7 @@
         "tags": ["Submissions"],
         "summary": "Get a presigned download URL for a file you uploaded (verification)",
         "operationId": "getSubmissionDownloadUrl",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
@@ -255,7 +255,7 @@
         "summary": "Finalize the submission (Writing → review)",
         "description": "Locks the submission for editing via the API and moves it into the review queue. Further changes must go through the KHDP web UI.",
         "operationId": "submitSubmission",
-        "security": [ { "bearerAuth": [] }, { "apiKeyAuth": [] } ],
+        "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
@@ -314,8 +314,7 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "OAuth JWT or khdp_pat_*", "description": "OAuth/PKCE access token, or a personal access token (PAT) starting with `khdp_pat_`. Sent as `Authorization: Bearer <token>`." },
-      "apiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "Personal access token (PAT, `khdp_pat_*`) sent as `X-API-Key: <pat>`. Equivalent to `Authorization: Bearer <pat>` — the gateway translates this header into the standard Authorization form before forwarding to the backend. Prefer this form for PATs to keep them visually distinct from OAuth Bearer tokens (no functional difference)." }
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "OAuth JWT or khdp_pat_*", "description": "OAuth/PKCE access token, or a personal access token (PAT) starting with `khdp_pat_`. Sent as `Authorization: Bearer <token>`." }
     },
     "parameters": {
       "DatasetCode":    { "name": "code",    "in": "path", "required": true, "schema": { "type": "string" }, "description": "Dataset code (e.g. `KHDP-OPEN-001`)." },

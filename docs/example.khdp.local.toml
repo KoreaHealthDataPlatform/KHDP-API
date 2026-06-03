@@ -20,7 +20,7 @@ redirect_url = ""
 # api_key = "khdp_pat_..."
 
 # Override for staging / on-prem KHDP deployments.
-api_base = "https://khdp.ai/v1"
+api_base = "https://khdp.io/v1"
 
 # Where to keep tokens. Defaults to the platform user-config dir.
 # token_dir = "~/.config/khdp"

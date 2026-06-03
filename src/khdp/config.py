@@ -28,11 +28,12 @@ else:  # pragma: no cover
     import tomli as tomllib
 
 
-# KHDP central API base. As of 0.5.0 this points at the AI-agent
-# gateway at https://khdp.ai/v1, which forwards 1:1 to the legacy
-# backend at https://khdp.net/_api. Set `KHDP_API_BASE` to either URL
-# explicitly to override (e.g. for staging / on-prem deployments).
-DEFAULT_API_BASE = "https://khdp.ai/v1"
+# KHDP central API base. As of 0.7.0 this points at the AI-agent
+# gateway at https://khdp.io/v1 (temporary host while khdp.ai NS is
+# delegated to Naver for the snuh.ai CNAME chain). It forwards 1:1 to
+# the legacy backend at https://khdp.net/_api. Set `KHDP_API_BASE` to
+# either URL explicitly to override (e.g. for staging / on-prem).
+DEFAULT_API_BASE = "https://khdp.io/v1"
 
 # Browser destination during the PKCE login.
 DEFAULT_AUTHORIZE_URL = "https://khdp.net/external/oauth-login"

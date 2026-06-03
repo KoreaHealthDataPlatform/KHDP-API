@@ -6,7 +6,7 @@
 
 **대한민국 의료 데이터 플랫폼(Korea Health Data Platform)** 개발자 인터페이스 — `curl`, Python, 또는 AI 코딩 에이전트에서 의료 연구 데이터셋을 검색·다운로드·제출할 수 있습니다.
 
-- REST API: `https://khdp.ai/v1` — <https://khdp.ai/docs> 참고.
+- REST API: `https://khdp.io/v1` — <https://khdp.io/docs> 참고.
 - 익명 조회 가능. 인증(OAuth / API Token)을 통해 다운로드와 제출이 가능합니다.
 - 동일한 인증 세션이 CLI, Python 라이브러리, 그리고 Claude Code · Codex CLI · Cursor · Gemini CLI용 MCP 서버를 함께 구동합니다.
 
@@ -16,7 +16,7 @@
 
 ### 1. curl
 ```bash
-curl 'https://khdp.ai/v1/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.io/v1/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python (`khdp` SDK)
@@ -40,13 +40,13 @@ claude mcp add khdp -- khdp-mcp
 ### 4. OpenAI Codex CLI
 [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml)을 `~/.codex/config.toml`에 추가한 뒤 `khdp login` 한 번 실행.
 
-> 자세한 안내: [docs/quickstart.ko.md](./docs/quickstart.ko.md). 엔드포인트 레퍼런스: <https://khdp.ai/docs>.
+> 자세한 안내: [docs/quickstart.ko.md](./docs/quickstart.ko.md). 엔드포인트 레퍼런스: <https://khdp.io/docs>.
 
 ## AI 에이전트로 사용하기
 
 AI 코딩 에이전트(Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI 등)에 KHDP를 다루게 하시려면 아래 프롬프트를 그대로 붙여넣으세요:
 
-> https://khdp.ai/AGENTS.md 를 읽고 KHDP API 사용 지침을 그대로 따라주세요. 인증이 필요하면 진행 전에 **OAuth (브라우저 로그인)** 와 **PAT (개인 액세스 토큰)** 중 어느 쪽을 선호하는지 저에게 물어봐 주세요.
+> https://khdp.io/AGENTS.md 를 읽고 KHDP API 사용 지침을 그대로 따라주세요. 인증이 필요하면 진행 전에 **OAuth (브라우저 로그인)** 와 **PAT (개인 액세스 토큰)** 중 어느 쪽을 선호하는지 저에게 물어봐 주세요.
 
 에이전트는 [`AGENTS.md`](./AGENTS.md) 를 읽어 `khdp` 설치, 인증 경로 선택, API 호출, 에러 처리, 데이터셋의 PHI-equivalent 취급까지 안내받습니다.
 
@@ -77,7 +77,7 @@ CLI · SDK · MCP에서 모두 사용 가능한 3가지 인증 방식.
 # ./khdp.local.toml  (또는 ~/.config/khdp/config.toml)
 app_id     = "00000000-0000-0000-0000-000000000000"
 # api_key    = "khdp_pat_..."    # 개인 API 토큰
-api_base   = "https://khdp.ai/v1"
+api_base   = "https://khdp.io/v1"
 ```
 
 또는 환경변수: `KHDP_APP_ID`, `KHDP_TOKEN`.
@@ -127,7 +127,7 @@ Cursor는 같은 MCP 서버를 사용합니다 — `mcp.servers` 설정에서 `k
 ## 문서
 
 - [Quickstart](./docs/quickstart.ko.md) — 처음 5분
-- [REST API 레퍼런스](https://khdp.ai/docs) — 엔드포인트, 페이로드, 스코프, 에러 (영어)
+- [REST API 레퍼런스](https://khdp.io/docs) — 엔드포인트, 페이로드, 스코프, 에러 (영어)
 - [`examples/`](./examples/) — 실행 가능한 Python 스크립트 (익명 검색, 데이터셋 상세, 인증 다운로드)
 - [`AGENTS.md`](./AGENTS.md) — 코딩 에이전트에서 connector 다루기 (영어)
 - [공식 사양](https://khdp.net/docs/external-api) — KHDP 공식 문서 사이트

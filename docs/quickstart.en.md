@@ -133,7 +133,7 @@ The same MCP server backs [OpenAI Codex CLI](../wrappers/codex/), [Gemini CLI](.
 
 ## What to read next
 
-- [API reference (Redoc)](https://khdp.ai/docs) — every endpoint, payload, scope, and error (machine-readable spec at <https://khdp.ai/openapi.json>)
+- [API reference (Redoc)](https://khdp.io/docs) — every endpoint, payload, scope, and error (machine-readable spec at <https://khdp.io/openapi.json>)
 - [`AGENTS.md`](../AGENTS.md) — driving the connector from a coding agent in depth
 - [Canonical KHDP spec](https://khdp.net/docs/external-api) — official site
 - [Security model](../SECURITY.md) — PKCE, loopback redirect, token storage, threat model

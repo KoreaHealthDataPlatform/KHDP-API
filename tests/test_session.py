@@ -122,18 +122,16 @@ def test_authed_request_auto_falls_back_to_app_key(tmp_path: Path, httpx_mock) -
     assert s.authed_request("GET", "/datasets").status_code == 200
 
 
-def test_authed_request_api_key_sends_x_api_key(
+def test_authed_request_api_key_sends_bearer(
     tmp_path: Path, httpx_mock,
 ) -> None:
-    """KHDP API key (a `khdp_pat_*` PAT) is sent as `X-API-Key` — the
-    gateway folds it into `Authorization: Bearer` before forwarding."""
+    """A PAT (``khdp_pat_*``) is sent as ``Authorization: Bearer <pat>``."""
     s = _app_key_session(tmp_path, api_key="khdp_pat_FAKE")
 
     def _check(request):
         import httpx
-        assert request.headers["x-api-key"] == "khdp_pat_FAKE"
-        # The SDK does not also send Authorization for PAT mode.
-        assert "authorization" not in request.headers
+        assert request.headers["authorization"] == "Bearer khdp_pat_FAKE"
+        assert "x-api-key" not in request.headers
         return httpx.Response(200, json={"ok": True})
 
     httpx_mock.add_callback(_check, url="https://api.example/_api/datasets")

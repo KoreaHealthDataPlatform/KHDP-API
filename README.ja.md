@@ -6,7 +6,7 @@
 
 **Korea Health Data Platform**（韓国医療データプラットフォーム）の開発者向けインターフェイス — `curl`、Python、または任意の AI コーディングエージェントから医療研究データセットを検索・ダウンロード・提出できます。
 
-- REST API は `https://khdp.ai/v1` — <https://khdp.ai/docs> を参照。
+- REST API は `https://khdp.io/v1` — <https://khdp.io/docs> を参照。
 - 匿名閲覧が可能。認証（OAuth / API Token）によりダウンロードと提出が解放されます。
 - 同一の認証セッションが CLI、Python ライブラリ、そして Claude Code・Codex CLI・Cursor・Gemini CLI 向けの MCP サーバーを動かします。
 
@@ -16,7 +16,7 @@
 
 ### 1. curl
 ```bash
-curl 'https://khdp.ai/v1/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.io/v1/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python（`khdp` SDK）
@@ -40,13 +40,13 @@ claude mcp add khdp -- khdp-mcp
 ### 4. OpenAI Codex CLI
 [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) を `~/.codex/config.toml` に追記し、一度だけ `khdp login` を実行します。
 
-> 詳しいガイド: [docs/quickstart.ja.md](./docs/quickstart.ja.md)。エンドポイントリファレンス: <https://khdp.ai/docs>。
+> 詳しいガイド: [docs/quickstart.ja.md](./docs/quickstart.ja.md)。エンドポイントリファレンス: <https://khdp.io/docs>。
 
 ## AI エージェントから使う
 
 AI コーディングエージェント（Claude Code、OpenAI Codex、Google Antigravity、Cursor、Gemini CLI など）から KHDP を使いますか？次の文をエージェントに貼り付けてください：
 
-> https://khdp.ai/AGENTS.md を読み、KHDP API の指示にそって作業してください。認証が必要になったら、進める前に **OAuth（ブラウザログイン）** と **PAT（個人アクセストークン）** のどちらを希望するか私に確認してください。
+> https://khdp.io/AGENTS.md を読み、KHDP API の指示にそって作業してください。認証が必要になったら、進める前に **OAuth（ブラウザログイン）** と **PAT（個人アクセストークン）** のどちらを希望するか私に確認してください。
 
 エージェントはその後 [`AGENTS.md`](./AGENTS.md) を読み込み、`khdp` のインストール、認証方法の選定、API 呼び出し、エラー対応、データセット内容を PHI 同等として扱う指針までを得ます。
 
@@ -77,7 +77,7 @@ CLI・SDK・MCP の間で互換的に使える 3 種類の資格情報。
 # ./khdp.local.toml  （または ~/.config/khdp/config.toml）
 app_id     = "00000000-0000-0000-0000-000000000000"
 # api_key    = "khdp_pat_..."    # 個人 API トークン
-api_base   = "https://khdp.ai/v1"
+api_base   = "https://khdp.io/v1"
 ```
 
 または環境変数: `KHDP_APP_ID`、`KHDP_TOKEN`。
@@ -127,7 +127,7 @@ Cursor は同じ MCP サーバーを利用します — `mcp.servers` 設定で 
 ## ドキュメント
 
 - [Quickstart](./docs/quickstart.ja.md) — 最初の 5 分
-- [REST API リファレンス](https://khdp.ai/docs) — エンドポイント、ペイロード、スコープ、エラー（英語）
+- [REST API リファレンス](https://khdp.io/docs) — エンドポイント、ペイロード、スコープ、エラー（英語）
 - [`examples/`](./examples/) — 実行可能な Python スクリプト（匿名検索、データセット詳細、認証付きダウンロード）
 - [`AGENTS.md`](./AGENTS.md) — コーディングエージェントから connector を駆動する（英語）
 - [正規仕様](https://khdp.net/docs/external-api) — KHDP 公式ドキュメントサイト

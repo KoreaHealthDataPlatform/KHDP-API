@@ -135,7 +135,7 @@ Claude Code 会调用 MCP 服务器，而后者复用第 2 步建立的令牌缓
 
 ## 接下来阅读
 
-- [API 参考 (Redoc)](https://khdp.ai/docs) — 每个端点、负载、scope 和错误（机器可读规范：<https://khdp.ai/openapi.json>）
+- [API 参考 (Redoc)](https://khdp.io/docs) — 每个端点、负载、scope 和错误（机器可读规范：<https://khdp.io/openapi.json>）
 - [`AGENTS.md`](../AGENTS.md) — 深入从编码代理驱动 connector（英文）
 - [KHDP 规范](https://khdp.net/docs/external-api) — 官方站点
 - [安全模型](../SECURITY.md) — PKCE、loopback 重定向、令牌存储、威胁模型（英文）

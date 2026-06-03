@@ -6,7 +6,7 @@
 
 La interfaz para desarrolladores de la **Korea Health Data Platform** — buscar, descargar y enviar conjuntos de datos de investigación médica desde `curl`, Python o cualquier agente de codificación con IA.
 
-- API REST en `https://khdp.ai/v1` — ver <https://khdp.ai/docs>.
+- API REST en `https://khdp.io/v1` — ver <https://khdp.io/docs>.
 - La navegación anónima funciona; la autenticación (OAuth / API Token) habilita descargas y envíos.
 - Una misma sesión autenticada alimenta la CLI, la biblioteca de Python y un servidor MCP para Claude Code, Codex CLI, Cursor y Gemini CLI.
 
@@ -16,7 +16,7 @@ La interfaz para desarrolladores de la **Korea Health Data Platform** — buscar
 
 ### 1. curl
 ```bash
-curl 'https://khdp.ai/v1/datasets?query=heart&limit=5' | jq '.items[].code'
+curl 'https://khdp.io/v1/datasets?query=heart&limit=5' | jq '.items[].code'
 ```
 
 ### 2. Python (SDK `khdp`)
@@ -40,13 +40,13 @@ Luego pídale a Claude Code: *"Busca en KHDP conjuntos de datos sobre enfermedad
 ### 4. OpenAI Codex CLI
 Añada [`wrappers/codex/config.example.toml`](./wrappers/codex/config.example.toml) a `~/.codex/config.toml` y ejecute `khdp login` una vez.
 
-> Guía completa: [docs/quickstart.es.md](./docs/quickstart.es.md). Referencia de endpoints: <https://khdp.ai/docs>.
+> Guía completa: [docs/quickstart.es.md](./docs/quickstart.es.md). Referencia de endpoints: <https://khdp.io/docs>.
 
 ## Úsalo desde un agente IA
 
 ¿Trabajas con KHDP a través de un agente IA de codificación (Claude Code, OpenAI Codex, Google Antigravity, Cursor, Gemini CLI, …)? Pega esto en el agente:
 
-> Por favor, lee https://khdp.ai/AGENTS.md y sigue sus indicaciones para la API de KHDP. Cuando haga falta autenticación, pregúntame antes si prefiero **OAuth (login en navegador)** o un **Personal Access Token (PAT)**.
+> Por favor, lee https://khdp.io/AGENTS.md y sigue sus indicaciones para la API de KHDP. Cuando haga falta autenticación, pregúntame antes si prefiero **OAuth (login en navegador)** o un **Personal Access Token (PAT)**.
 
 El agente cargará entonces [`AGENTS.md`](./AGENTS.md), que le indica cómo instalar `khdp`, elegir contigo el método de autenticación, llamar a la API, gestionar errores y tratar el contenido de los datasets como equivalente a PHI.
 
@@ -77,7 +77,7 @@ Solicite un `app_id` al equipo de KHDP. Los tokens personales se generan en *Set
 # ./khdp.local.toml  (o ~/.config/khdp/config.toml)
 app_id     = "00000000-0000-0000-0000-000000000000"
 # api_key    = "khdp_pat_..."    # token personal de API
-api_base   = "https://khdp.ai/v1"
+api_base   = "https://khdp.io/v1"
 ```
 
 O por variable de entorno: `KHDP_APP_ID`, `KHDP_TOKEN`.
@@ -127,7 +127,7 @@ Cursor usa el mismo servidor MCP — apunte su configuración `mcp.servers` a `k
 ## Documentación
 
 - [Quickstart](./docs/quickstart.es.md) — los primeros cinco minutos
-- [Referencia de la API REST](https://khdp.ai/docs) — endpoints, payloads, scopes, errores (en inglés)
+- [Referencia de la API REST](https://khdp.io/docs) — endpoints, payloads, scopes, errores (en inglés)
 - [`examples/`](./examples/) — scripts de Python ejecutables (búsqueda anónima, detalle de dataset, descarga autenticada)
 - [`AGENTS.md`](./AGENTS.md) — usar el conector desde un agente de codificación (en inglés)
 - [Especificación canónica](https://khdp.net/docs/external-api) — sitio oficial de documentación
