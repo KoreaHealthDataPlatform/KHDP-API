@@ -169,6 +169,23 @@
           "200": { "description": "Submission detail.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Submission" } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
+      },
+      "patch": {
+        "tags": ["Submissions"],
+        "summary": "Partially update a submission",
+        "description": "Update only the fields you pass. Allowed only while the submission is in `writing` stage.",
+        "operationId": "updateSubmission",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionUpdate" } } } },
+        "responses": {
+          "200": { "description": "Updated.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Submission" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
       }
     },
     "/submissions/{code}/{version}/files": {
@@ -179,10 +196,11 @@
         "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
-          { "$ref": "#/components/parameters/DatasetVersion" }
+          { "$ref": "#/components/parameters/DatasetVersion" },
+          { "name": "path", "in": "query", "required": false, "schema": { "type": "string", "default": "/" }, "description": "Directory to list. `/` (default) for the root, or a sub-path like `/Datasets/2026`." }
         ],
         "responses": {
-          "200": { "description": "Files.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/FileEntry" } } } } }
+          "200": { "description": "Listing.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionFileListing" } } } }
         }
       },
       "delete": {
@@ -209,7 +227,7 @@
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
         ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string", "description": "Directory path." } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionFileRequest" } } } },
         "responses": {
           "201": { "description": "Created." },
           "409": { "description": "Directory already exists.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
@@ -219,17 +237,70 @@
     "/submissions/{code}/{version}/files/presigned-url": {
       "post": {
         "tags": ["Submissions"],
-        "summary": "Get a presigned PUT URL for uploading a file",
-        "description": "Client then issues `PUT <url>` with the file body. The byte upload does not transit the gateway.",
+        "summary": "Get a presigned PUT URL for uploading a single file",
+        "description": "Server returns an S3-compatible presigned URL. Client then issues `PUT <uploadUrl>` with the file bytes (the upload does not transit the gateway). Use the multipart endpoints for files larger than ~5 GB.",
         "operationId": "getSubmissionUploadUrl",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" }
         ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string" }, "contentType": { "type": "string" } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmissionFileRequest" } } } },
         "responses": {
-          "200": { "description": "Upload URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } }
+          "200": { "description": "Upload URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUploadUrl" } } } },
+          "201": { "description": "Upload URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUploadUrl" } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files/multipart/initiate": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Initiate an S3 multipart upload",
+        "description": "For files larger than ~5 GB. Server returns an `uploadId` and a list of per-part presigned PUT URLs. Client uploads each part, collects `{PartNumber, ETag}`, then calls `/multipart/complete`.",
+        "operationId": "initiateSubmissionMultipart",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MultipartInitiateRequest" } } } },
+        "responses": {
+          "200": { "description": "Initiated.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MultipartInitiateResponse" } } } },
+          "201": { "description": "Initiated.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MultipartInitiateResponse" } } } }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files/multipart/complete": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Complete a multipart upload",
+        "operationId": "completeSubmissionMultipart",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MultipartCompleteRequest" } } } },
+        "responses": {
+          "200": { "description": "Completed." },
+          "201": { "description": "Completed." }
+        }
+      }
+    },
+    "/submissions/{code}/{version}/files/multipart/abort": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Abort a multipart upload",
+        "operationId": "abortSubmissionMultipart",
+        "security": [ { "bearerAuth": [] } ],
+        "parameters": [
+          { "$ref": "#/components/parameters/DatasetCode" },
+          { "$ref": "#/components/parameters/DatasetVersion" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MultipartAbortRequest" } } } },
+        "responses": {
+          "200": { "description": "Aborted." },
+          "201": { "description": "Aborted." }
         }
       }
     },
@@ -242,7 +313,7 @@
         "parameters": [
           { "$ref": "#/components/parameters/DatasetCode" },
           { "$ref": "#/components/parameters/DatasetVersion" },
-          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" } }
+          { "name": "path", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Full path of the file relative to the submission root (e.g. `/Data.csv` or `/Datasets/2026/Data.csv`)." }
         ],
         "responses": {
           "200": { "description": "Presigned URL.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignedUrl" } } } }
@@ -252,8 +323,8 @@
     "/submissions/{code}/{version}/submit": {
       "post": {
         "tags": ["Submissions"],
-        "summary": "Finalize the submission (Writing → review)",
-        "description": "Locks the submission for editing via the API and moves it into the review queue. Further changes must go through the KHDP web UI.",
+        "summary": "Finalize the submission (writing → admin_review)",
+        "description": "Locks the submission for editing via the API and hands it to KHDP staff for `admin_review`. Once accepted by staff it moves into author/IRB `review`, then `approved` (publicly listed in `/datasets`) or `rejected`. Further metadata edits during/after review happen through the KHDP web UI.",
         "operationId": "submitSubmission",
         "security": [ { "bearerAuth": [] } ],
         "parameters": [
@@ -261,7 +332,7 @@
           { "$ref": "#/components/parameters/DatasetVersion" }
         ],
         "responses": {
-          "200": { "description": "Submitted." },
+          "201": { "description": "Submitted.", "content": { "application/json": { "schema": { "type": "object", "required": ["code", "version", "status"], "properties": { "code": { "type": "string" }, "version": { "type": "string" }, "status": { "type": "string", "enum": ["admin_review"] } } } } } },
           "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
@@ -378,6 +449,7 @@
       },
       "FileEntry": {
         "type": "object",
+        "description": "Used by the public dataset file listing endpoint (`GET /datasets/{code}/{version}/files`). For the submission file listing see `SubmissionFileEntry`.",
         "required": ["key"],
         "properties": {
           "key":          { "type": "string",  "example": "imaging/scan001.dcm" },
@@ -386,12 +458,99 @@
           "lastModified": { "type": "string",  "format": "date-time" }
         }
       },
+      "SubmissionFileEntry": {
+        "type": "object",
+        "description": "One entry inside a submission's file listing — either a regular `file` or (when surfaced inside `subDirs`) a directory entry.",
+        "required": ["name", "key", "type"],
+        "properties": {
+          "name": { "type": "string", "description": "File or directory name (last path segment)." },
+          "key":  { "type": "string", "description": "Object key relative to the submission root." },
+          "type": { "type": "string", "enum": ["file", "directory"] },
+          "size": { "type": "integer", "format": "int64", "description": "File size in bytes (omitted for directories)." },
+          "date": { "type": "string", "format": "date-time", "description": "Last modified timestamp." }
+        }
+      },
+      "SubmissionFileListing": {
+        "type": "object",
+        "description": "One directory's worth of submission contents — sub-directories and direct files. Drill into `subDirs[].key` by re-calling the endpoint with `?path=<key>`.",
+        "required": ["code", "version", "currentPath", "subDirs", "contents"],
+        "properties": {
+          "code":        { "type": "string" },
+          "version":     { "type": "string" },
+          "parentPath":  { "type": "string", "description": "The parent of `currentPath`; empty when at the root." },
+          "currentPath": { "type": "string", "description": "Echoes the requested path." },
+          "subDirs":     { "type": "array", "items": { "$ref": "#/components/schemas/SubmissionFileEntry" }, "description": "Sub-directory entries (`type=directory`)." },
+          "contents":    { "type": "array", "items": { "$ref": "#/components/schemas/SubmissionFileEntry" }, "description": "Direct file entries (`type=file`)." }
+        }
+      },
+      "SubmissionFileRequest": {
+        "type": "object",
+        "description": "Common body for submission-file endpoints (presigned URL, directory create). The `cvId` field is required by the backend validator but the value is derived from the URL `{code}/{version}` and overwritten server-side — pass `0` (or any number) as a placeholder.",
+        "required": ["cvId", "currentPath", "name"],
+        "properties": {
+          "cvId":        { "type": "integer", "description": "Placeholder (see schema description). Pass `0`." },
+          "currentPath": { "type": "string", "pattern": "^/$|^/?[A-Za-z0-9]+(?:[/_-][A-Za-z0-9]+)*/?$", "description": "Where to place the file/directory. Root: `/`. Nested: `/Datasets/2026`." },
+          "name":        { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$", "description": "File or directory name. Allowed: letters, digits, `.`, `_`, `-`; must start with a letter or digit." }
+        }
+      },
       "PresignedUrl": {
         "type": "object",
+        "description": "Presigned URL for downloading a single file you previously uploaded (verification flow). For upload URLs see `PresignedUploadUrl`.",
         "required": ["url"],
         "properties": {
           "url":       { "type": "string", "format": "uri" },
           "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PresignedUploadUrl": {
+        "type": "object",
+        "description": "Server response for `POST /submissions/{code}/{version}/files/presigned-url`. Issue `PUT <uploadUrl>` with the file bytes and `Content-Type: application/octet-stream` (or your file's media type).",
+        "required": ["uploadUrl"],
+        "properties": {
+          "code":      { "type": "string" },
+          "version":   { "type": "string" },
+          "path":      { "type": "string", "description": "Resolved path (echo of the request `currentPath`)." },
+          "name":      { "type": "string", "description": "Echo of the request `name`." },
+          "uploadUrl": { "type": "string", "format": "uri", "description": "Presigned S3-compatible PUT URL (NCP Object Storage gov endpoint). The URL is time-limited; upload promptly." }
+        }
+      },
+      "MultipartInitiateRequest": {
+        "type": "object",
+        "required": ["cvId", "currentPath", "name", "fileSize", "partSize"],
+        "properties": {
+          "cvId":        { "type": "integer", "description": "Placeholder; see `SubmissionFileRequest`." },
+          "currentPath": { "type": "string" },
+          "name":        { "type": "string" },
+          "fileSize":    { "type": "integer", "format": "int64", "description": "Total file size in bytes." },
+          "partSize":    { "type": "integer", "format": "int64", "description": "Part size in bytes (≥ 5 MiB; 16–64 MiB typical)." }
+        }
+      },
+      "MultipartInitiateResponse": {
+        "type": "object",
+        "required": ["uploadId", "objectKey", "partUrls"],
+        "properties": {
+          "uploadId":  { "type": "string" },
+          "objectKey": { "type": "string", "description": "S3 key for the resulting object." },
+          "partUrls":  { "type": "array", "items": { "type": "object", "properties": { "partNumber": { "type": "integer" }, "url": { "type": "string", "format": "uri" } } }, "description": "Per-part presigned PUT URLs." }
+        }
+      },
+      "MultipartCompleteRequest": {
+        "type": "object",
+        "required": ["cvId", "objectKey", "uploadId", "parts"],
+        "properties": {
+          "cvId":      { "type": "integer", "description": "Placeholder; see `SubmissionFileRequest`." },
+          "objectKey": { "type": "string" },
+          "uploadId":  { "type": "string" },
+          "parts":     { "type": "array", "items": { "type": "object", "required": ["PartNumber", "ETag"], "properties": { "PartNumber": { "type": "integer" }, "ETag": { "type": "string" } } } }
+        }
+      },
+      "MultipartAbortRequest": {
+        "type": "object",
+        "required": ["cvId", "objectKey", "uploadId"],
+        "properties": {
+          "cvId":      { "type": "integer" },
+          "objectKey": { "type": "string" },
+          "uploadId":  { "type": "string" }
         }
       },
       "FileListing": {
@@ -414,27 +573,61 @@
       },
       "Submission": {
         "type": "object",
-        "required": ["code", "version", "stage"],
+        "description": "Submission record. Returned by `POST /submissions` (create), `GET /submissions` (list), and `GET /submissions/{code}/{version}` (detail). Detail responses include richer fields (`licenseCode`, `licenseLink`, `authors`, `versions`, `topics`, `editable`).",
+        "required": ["code", "version", "status"],
         "properties": {
           "code":         { "type": "string" },
           "version":      { "type": "string" },
           "title":        { "type": "string" },
           "summary":      { "type": "string" },
-          "stage":        { "type": "string", "enum": ["writing", "review", "approved", "rejected"] },
-          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] },
+          "type":         { "type": "string", "description": "Provenance tag (e.g. `SNUH`, `Physionet`, `GitHub`)." },
+          "status":       { "type": "string", "enum": ["writing", "admin_review", "review", "approved", "rejected"], "description": "Submission lifecycle stage. `writing` = editable by the owner. `admin_review` = handed to KHDP staff. `review` = under author/IRB review. `approved` / `rejected` = terminal." },
+          "accessPolicy": { "type": ["string", "null"], "enum": ["open", "restricted", "credentialed", "contributor_review", null], "description": "May be `null` on detail responses because the backend stores it as an internal numeric code." },
           "createdAt":    { "type": "string", "format": "date-time" },
-          "updatedAt":    { "type": "string", "format": "date-time" }
+          "updatedAt":    { "type": "string", "format": "date-time" },
+          "licenseCode":  { "type": "string", "description": "License `lCode` (detail only)." },
+          "licenseLink":  { "type": "string", "format": "uri", "description": "License URL (detail only)." },
+          "laestVersion": { "type": "string", "description": "Backend-spelled `latestVersion` (note the typo carried in the wire format)." },
+          "publishDate":  { "type": ["string", "null"], "format": "date-time" },
+          "topics":       { "type": "array", "items": { "type": "string" } },
+          "versions":     { "type": "array", "items": { "type": "object", "properties": { "version": { "type": "string" }, "link": { "type": ["string", "null"] }, "publishDate": { "type": ["string", "null"] } } } },
+          "authors":      { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "editable":     { "type": "boolean", "description": "Whether the submission is still editable via `PATCH /submissions/{code}/{version}` and file endpoints." }
         }
       },
       "SubmissionCreate": {
         "type": "object",
-        "required": ["title", "version", "accessPolicy"],
+        "required": ["title", "version", "code", "summary", "accessPolicy", "lId"],
         "properties": {
           "title":        { "type": "string", "maxLength": 200 },
-          "code":         { "type": "string", "description": "Optional; auto-generated if omitted. Must not contain `/ \\ : * ? \" < > |` or whitespace." },
+          "code":         { "type": "string", "pattern": "^[^\\x00/\\\\:*?\"<>|\\s]+$", "description": "Dataset slug. Must not contain `/ \\ : * ? \" < > |` or whitespace." },
           "version":      { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-          "summary":      { "type": "string", "maxLength": 500 },
-          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] }
+          "summary":      { "type": "string", "minLength": 1, "maxLength": 500 },
+          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] },
+          "lId":          { "type": "integer", "description": "License ID — see `GET /submissions/licenses` for the catalog." },
+          "details":      { "type": "array", "items": { "$ref": "#/components/schemas/ContentDetailDesc" }, "description": "Optional structured detail sections (Abstract, Background, Methods, ...). Each section has a `name` and HTML `content`." }
+        }
+      },
+      "SubmissionUpdate": {
+        "type": "object",
+        "description": "Partial update body for `PATCH /submissions/{code}/{version}`. Any field omitted is preserved. Only allowed while the submission is in `writing` stage.",
+        "properties": {
+          "title":        { "type": "string", "maxLength": 200 },
+          "code":         { "type": "string", "pattern": "^[^\\x00/\\\\:*?\"<>|\\s]+$" },
+          "version":      { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "summary":      { "type": "string", "minLength": 1, "maxLength": 500 },
+          "accessPolicy": { "type": "string", "enum": ["open", "restricted", "credentialed", "contributor_review"] },
+          "lId":          { "type": "integer" },
+          "details":      { "type": "array", "items": { "$ref": "#/components/schemas/ContentDetailDesc" } }
+        }
+      },
+      "ContentDetailDesc": {
+        "type": "object",
+        "description": "One section of structured dataset documentation. Typical `name` values: `Abstract`, `Background`, `Methods`, `Data Description`. `content` is HTML; KHDP UI renders it.",
+        "required": ["name", "content"],
+        "properties": {
+          "name":    { "type": "string" },
+          "content": { "type": "string", "description": "HTML body." }
         }
       },
       "License": {

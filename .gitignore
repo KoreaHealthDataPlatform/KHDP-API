@@ -47,3 +47,7 @@ khdp.local.toml
 # Internal / superuser-only docs (roadmap, backend coordination) — not
 # part of the public package. Kept locally, never published.
 superuser/
+
+# Local catalog-inventory scratch (one-off analysis, not part of the package)
+_scratch_*
+_scratch_details/

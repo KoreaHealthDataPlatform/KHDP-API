@@ -8,6 +8,37 @@ and uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **OpenAPI submission flow synced to backend reality.**
+  The old spec described an aspirational, simpler shape; the live
+  `nstri-back` validator was stricter, so AI agents calling the
+  documented requests got 400s. The spec now reflects what the
+  backend actually accepts:
+  - `POST /submissions` body adds `lId` (license id, required),
+    promotes `code` and `summary` to required, and documents the
+    optional `details[]` block.
+  - `POST /submissions/{c}/{v}/files/presigned-url` and
+    `/files/directory` take `{cvId, currentPath, name}` — not
+    `{key, contentType}`. `cvId` is a placeholder the server
+    overwrites from the path, but the validator requires the field.
+  - Presigned-URL response field is `uploadUrl` (not `url`), wrapped
+    with `{code, version, path, name}` echo.
+  - File listing response is a directory tree
+    (`{currentPath, subDirs, contents}` with per-entry
+    `{name, key, type, size, date}`), not a flat array of
+    `FileEntry`. Added the `path` query parameter.
+  - Added `PATCH /submissions/{c}/{v}` for partial metadata updates
+    while a submission is in `writing` stage.
+  - Added the S3 multipart upload trio
+    (`files/multipart/{initiate,complete,abort}`) for files larger
+    than ~5 GB.
+  - `POST /submissions/{c}/{v}/submit` returns `201` with
+    `{code, version, status: "admin_review"}`, and the `status`
+    enum now carries `admin_review` between `writing` and `review`.
+  - `Submission` schema gained detail-only fields surfaced by the
+    backend (`type`, `licenseCode`, `licenseLink`, `laestVersion`
+    [sic — typo carried in the wire format], `versions`,
+    `publishDate`, `topics`, `authors`, `editable`).
+  - Download-URL endpoint takes `?path=` (not `?key=`).
 - **API gateway host moved from `khdp.ai` to `khdp.io`** (temporary).
   `khdp.ai` NS was reverted to Naver Cloud Global DNS on 2026-06-02
   so that `www.snuh.ai`'s CNAME chain (snuh.ai cloud frontdoor) keeps
