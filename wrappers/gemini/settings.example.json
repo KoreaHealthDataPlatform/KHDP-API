@@ -7,7 +7,7 @@
       "env": {
         "KHDP_APP_ID": "00000000-0000-0000-0000-000000000000",
         "KHDP_REDIRECT_URL": "https://example.org/khdp-cli",
-        "KHDP_API_BASE": "https://khdp.ai/v1"
+        "KHDP_API_BASE": "https://khdp.io/v1"
       },
       "trust": false,
       "timeout": 30000

@@ -1,6 +1,6 @@
 # khdp-ai-gateway
 
-Cloudflare Worker fronting **`khdp.ai`** — the AI-agent entry point for the Korea Health Data Platform.
+Cloudflare Worker fronting **`khdp.io`** — the AI-agent entry point for the Korea Health Data Platform.
 
 | Path | Behaviour |
 | --- | --- |
@@ -44,15 +44,15 @@ CI (preferred): `.github/workflows/worker-deploy.yml` deploys on any push to `ma
 
 ## Custom domain (post-activation)
 
-`khdp.ai` zone must be `active` in Cloudflare (NS migration complete). Then uncomment the `[[routes]]` blocks in `wrangler.toml`:
+`khdp.io` zone must be `active` in Cloudflare (NS migration complete). Then uncomment the `[[routes]]` blocks in `wrangler.toml`:
 
 ```toml
 [[routes]]
-pattern = "khdp.ai"
+pattern = "khdp.io"
 custom_domain = true
 
 [[routes]]
-pattern = "www.khdp.ai"
+pattern = "www.khdp.io"
 custom_domain = true
 ```
 

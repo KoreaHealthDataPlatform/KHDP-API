@@ -28,7 +28,7 @@ afterEach(() => {
 describe("landing", () => {
   it("returns the landing HTML on GET /", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/"),
+      new Request("https://khdp.io/"),
       env,
       makeCtx(),
     );
@@ -47,7 +47,7 @@ describe("landing", () => {
 describe("/healthz", () => {
   it("returns ok=true", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/healthz"),
+      new Request("https://khdp.io/healthz"),
       env,
       makeCtx(),
     );
@@ -71,7 +71,7 @@ describe("/AGENTS.md", () => {
     );
 
     const res = await worker.fetch(
-      new Request("https://khdp.ai/AGENTS.md"),
+      new Request("https://khdp.io/AGENTS.md"),
       env,
       makeCtx(),
     );
@@ -87,7 +87,7 @@ describe("/AGENTS.md", () => {
 describe("/openapi.json", () => {
   it("serves the bundled OpenAPI 3.1 spec", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/openapi.json"),
+      new Request("https://khdp.io/openapi.json"),
       env,
       makeCtx(),
     );
@@ -111,7 +111,7 @@ describe("/openapi.json", () => {
 describe("/docs", () => {
   it("serves the Redoc HTML rendering /openapi.json", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/docs"),
+      new Request("https://khdp.io/docs"),
       env,
       makeCtx(),
     );
@@ -124,7 +124,7 @@ describe("/docs", () => {
 
   it("also responds at /docs/ (trailing slash)", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/docs/"),
+      new Request("https://khdp.io/docs/"),
       env,
       makeCtx(),
     );
@@ -154,7 +154,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/datasets → /_api/open/datasets", async () => {
     const { seen } = stubUpstream();
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets?query=heart&limit=2"),
+      new Request("https://khdp.io/v1/datasets?query=heart&limit=2"),
       env,
       makeCtx(),
     );
@@ -183,7 +183,7 @@ describe("/v1/* gateway canonical aliases", () => {
       }),
     );
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files?continueToken=TOK"),
+      new Request("https://khdp.io/v1/datasets/KHDP-001/latest/files?continueToken=TOK"),
       env,
       makeCtx(),
     );
@@ -198,7 +198,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/datasets/KHDP-001/latest/files/imaging/a.dcm → backend files/download-link?key= (REST-canonical member)", async () => {
     const { seen } = stubUpstream({ url: "https://signed/" });
     await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/KHDP-001/latest/files/imaging/a.dcm"),
+      new Request("https://khdp.io/v1/datasets/KHDP-001/latest/files/imaging/a.dcm"),
       env,
       makeCtx(),
     );
@@ -210,7 +210,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/submissions → /_api/open/dataset-submissions", async () => {
     const { seen } = stubUpstream();
     await worker.fetch(
-      new Request("https://khdp.ai/v1/submissions", {
+      new Request("https://khdp.io/v1/submissions", {
         method: "POST",
         body: JSON.stringify({ title: "X" }),
         headers: { "Content-Type": "application/json" },
@@ -225,7 +225,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/submissions/{code}/{ver}/submit → /_api/open/dataset-submissions/{code}/{ver}/submit", async () => {
     const { seen } = stubUpstream();
     await worker.fetch(
-      new Request("https://khdp.ai/v1/submissions/MY-001/1.0.0/submit", {
+      new Request("https://khdp.io/v1/submissions/MY-001/1.0.0/submit", {
         method: "POST",
       }),
       env,
@@ -239,7 +239,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/me → /_api/member/profile", async () => {
     const { seen } = stubUpstream({ mId: 1, email: "a@b.c" });
     await worker.fetch(
-      new Request("https://khdp.ai/v1/me", {
+      new Request("https://khdp.io/v1/me", {
         headers: { Authorization: "Bearer khdp_pat_X" },
       }),
       env,
@@ -251,7 +251,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/me/balance → /_api/credit/my-balance", async () => {
     const { seen } = stubUpstream({ balance: "1000" });
     await worker.fetch(
-      new Request("https://khdp.ai/v1/me/balance", {
+      new Request("https://khdp.io/v1/me/balance", {
         headers: { Authorization: "Bearer khdp_pat_X" },
       }),
       env,
@@ -263,7 +263,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/oauth/authorize → 302 redirect to WEB_BASE/external/oauth-login", async () => {
     const res = await worker.fetch(
       new Request(
-        "https://khdp.ai/v1/oauth/authorize?client_id=x&code_challenge=y",
+        "https://khdp.io/v1/oauth/authorize?client_id=x&code_challenge=y",
         { redirect: "manual" },
       ),
       env,
@@ -278,7 +278,7 @@ describe("/v1/* gateway canonical aliases", () => {
   it("/v1/oauth/token → /_api/oauth/token (passthrough, unchanged)", async () => {
     const { seen } = stubUpstream({ access_token: "X" });
     await worker.fetch(
-      new Request("https://khdp.ai/v1/oauth/token", {
+      new Request("https://khdp.io/v1/oauth/token", {
         method: "POST",
         body: JSON.stringify({ grant_type: "refresh_token" }),
         headers: { "Content-Type": "application/json" },
@@ -292,7 +292,7 @@ describe("/v1/* gateway canonical aliases", () => {
 
   it("returns 204 + CORS headers on preflight OPTIONS", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets", { method: "OPTIONS" }),
+      new Request("https://khdp.io/v1/datasets", { method: "OPTIONS" }),
       env,
       makeCtx(),
     );
@@ -306,7 +306,7 @@ describe("/v1/* gateway canonical aliases", () => {
 describe("unknown paths", () => {
   it("returns structured 404 JSON", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/nope"),
+      new Request("https://khdp.io/nope"),
       env,
       makeCtx(),
     );
@@ -340,7 +340,7 @@ describe("archive enrichment", () => {
         () => new Response(JSON.stringify({ isExist: false }), { status: 200 }),
     });
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3"),
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.3"),
       env,
       makeCtx(),
     );
@@ -359,7 +359,7 @@ describe("archive enrichment", () => {
         () => new Response(JSON.stringify({ isExist: true }), { status: 200 }),
     });
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3"),
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.3"),
       env,
       makeCtx(),
     );
@@ -380,7 +380,7 @@ describe("archive enrichment", () => {
         () => new Response(JSON.stringify({ url: "https://obj.example/INSPIRE.zip?sig=abc", expiresAt: "2026-06-01T00:00:00Z", sizeBytes: 1234567 }), { status: 200 }),
     });
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3", {
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.3", {
         headers: { Authorization: "Bearer khdp_pat_abc" },
       }),
       env,
@@ -394,43 +394,6 @@ describe("archive enrichment", () => {
     expect(body.archive.format).toBe("zip");
   });
 
-  it("X-API-Key header → translated to Authorization: Bearer; archive.url populated", async () => {
-    const sentHeaders: Record<string, string> = {};
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const u = typeof input === "string" ? input : input.toString();
-        if (u.endsWith("/compress-link")) {
-          const hdrs = new Headers(init?.headers as HeadersInit);
-          sentHeaders["compress-link"] = hdrs.get("Authorization") ?? "";
-        }
-        if (u.includes("/open/datasets/INSPIRE/1.3")) {
-          return new Response(JSON.stringify({ code: "INSPIRE", version: "1.3", title: "X", accessPolicy: "open" }), { status: 200 });
-        }
-        if (u.endsWith("/dataset/code/INSPIRE")) {
-          return new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 });
-        }
-        if (u.endsWith("/compress-check")) {
-          return new Response(JSON.stringify({ isExist: true }), { status: 200 });
-        }
-        if (u.endsWith("/compress-link")) {
-          return new Response(JSON.stringify({ url: "https://obj.example/X.zip" }), { status: 200 });
-        }
-        return new Response("not stubbed", { status: 500 });
-      }),
-    );
-    const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3", {
-        headers: { "X-API-Key": "khdp_pat_abc" },
-      }),
-      env,
-      makeCtx(),
-    );
-    const body = (await res.json()) as { archive: { url?: string } };
-    expect(body.archive.url).toBe("https://obj.example/X.zip");
-    expect(sentHeaders["compress-link"]).toBe("Bearer khdp_pat_abc");
-  });
-
   it("requested version != latest → archive omitted (available=false)", async () => {
     stubBackend({
       "/open/datasets/INSPIRE/1.2":
@@ -439,7 +402,7 @@ describe("archive enrichment", () => {
         () => new Response(JSON.stringify({ ciCode: "INSPIRE", cvId: 660, version: "1.3" }), { status: 200 }),
     });
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.2"),
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.2"),
       env,
       makeCtx(),
     );
@@ -451,7 +414,7 @@ describe("archive enrichment", () => {
 describe("legacy long-form paths", () => {
   it("/v1/open/datasets → 404 LEGACY_PATH suggesting /v1/datasets", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/open/datasets?limit=1"),
+      new Request("https://khdp.io/v1/open/datasets?limit=1"),
       env,
       makeCtx(),
     );
@@ -468,7 +431,7 @@ describe("legacy long-form paths", () => {
 
   it("/v1/open/datasets/KHDP-001/latest/files → 404 suggesting /v1/datasets/KHDP-001/latest/files", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/open/datasets/KHDP-001/latest/files"),
+      new Request("https://khdp.io/v1/open/datasets/KHDP-001/latest/files"),
       env,
       makeCtx(),
     );
@@ -480,7 +443,7 @@ describe("legacy long-form paths", () => {
   it("/v1/open/dataset-submissions/MY-001/1.0.0/submit → 404 suggesting /v1/submissions/MY-001/1.0.0/submit", async () => {
     const res = await worker.fetch(
       new Request(
-        "https://khdp.ai/v1/open/dataset-submissions/MY-001/1.0.0/submit",
+        "https://khdp.io/v1/open/dataset-submissions/MY-001/1.0.0/submit",
       ),
       env,
       makeCtx(),
@@ -492,7 +455,7 @@ describe("legacy long-form paths", () => {
 
   it("/v1/datasets/{c}/{v}/files-download-link-all → 404 LEGACY_PATH suggesting /files", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3/files-download-link-all"),
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.3/files-download-link-all"),
       env,
       makeCtx(),
     );
@@ -504,7 +467,7 @@ describe("legacy long-form paths", () => {
 
   it("/v1/datasets/{c}/{v}/files/download-link → 404 LEGACY_PATH suggesting /files/{key}", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/datasets/INSPIRE/1.3/files/download-link?key=imaging%2Fa.dcm"),
+      new Request("https://khdp.io/v1/datasets/INSPIRE/1.3/files/download-link?key=imaging%2Fa.dcm"),
       env,
       makeCtx(),
     );
@@ -516,7 +479,7 @@ describe("legacy long-form paths", () => {
 
   it("/v1/external/oauth-login → 404 suggesting /v1/oauth/authorize", async () => {
     const res = await worker.fetch(
-      new Request("https://khdp.ai/v1/external/oauth-login"),
+      new Request("https://khdp.io/v1/external/oauth-login"),
       env,
       makeCtx(),
     );

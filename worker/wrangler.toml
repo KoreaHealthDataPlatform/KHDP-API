@@ -10,14 +10,15 @@ account_id = "2250c9002ae689bc5c616b9fd0795e8f"
 # (https://khdp-ai-gateway.<account>.workers.dev).
 workers_dev = true
 
-# khdp.ai zone is active in Cloudflare as of 2026-05-30. Wrangler binds
-# both apex and www to this Worker on the next deploy.
+# Temporary cutover (2026-06-03): khdp.ai NS reverted to Naver so that
+# the SNUH www.snuh.ai CNAME chain works again. The Worker fronts the
+# API gateway on khdp.io until the long-term api.khdp.net origin lands.
 [[routes]]
-pattern = "khdp.ai"
+pattern = "khdp.io"
 custom_domain = true
 
 [[routes]]
-pattern = "www.khdp.ai"
+pattern = "www.khdp.io"
 custom_domain = true
 
 [observability]

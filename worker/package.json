@@ -2,7 +2,7 @@
   "name": "khdp-ai-gateway",
   "version": "0.1.0",
   "private": true,
-  "description": "Cloudflare Worker fronting khdp.ai — proxies /AGENTS.md to GitHub raw and /v1/* to the KHDP backend.",
+  "description": "Cloudflare Worker fronting khdp.io — proxies /AGENTS.md to GitHub raw and /v1/* to the KHDP backend.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

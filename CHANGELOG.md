@@ -7,16 +7,25 @@ and uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-- **`X-API-Key` header accepted as a PAT-friendly alias** for
-  `Authorization: Bearer <khdp_pat_*>`. The gateway folds an incoming
-  `X-API-Key` into the standard Authorization header before forwarding
-  to the backend, so there is no backend change. Clients can use
-  `X-API-Key` to make PAT usage visually distinct from OAuth Bearer
-  tokens in their code without losing compatibility. OpenAPI now lists
-  `apiKeyAuth` as a second securityScheme alongside `bearerAuth`.
+### Changed
+- **API gateway host moved from `khdp.ai` to `khdp.io`** (temporary).
+  `khdp.ai` NS was reverted to Naver Cloud Global DNS on 2026-06-02
+  so that `www.snuh.ai`'s CNAME chain (snuh.ai cloud frontdoor) keeps
+  working; the Cloudflare Worker that fronts AGENTS.md / openapi.json
+  / `/v1/*` was rebound to the `khdp.io` zone. `DEFAULT_API_BASE` now
+  points at `https://khdp.io/v1` and all docs/READMEs/wrappers were
+  updated. Long-term direction: `api.khdp.net` (NCP-hosted self
+  origin) with `khdp.ai` CNAMEd to it; both base URLs will be
+  supported via `KHDP_API_BASE`. Existing PAT/OAuth tokens are
+  unaffected — the gateway is a host swap, not a backend swap.
 
 ### Changed
+- **Auth surface simplified to a single header.** Both OAuth access
+  tokens and PATs travel as `Authorization: Bearer <token>`. The
+  short-lived `X-API-Key` alias (never released) is gone — gateway no
+  longer translates it, OpenAPI no longer documents `apiKeyAuth`, and
+  the SDK's `api_key` mode now sends Bearer. App-developer credentials
+  (`X-App-Id` / `X-App-Secret`) remain a separate, non-public surface.
 - **Files endpoints reshaped to REST-canonical collection/member**:
   - `GET /datasets/{c}/{v}/files` — flat paginated list with `{key,
     size, url}` per item plus an `archive` block. Replaces the

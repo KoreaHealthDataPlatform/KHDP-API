@@ -13,8 +13,8 @@ Follows the [agents.md](https://agents.md) convention.
   authenticated tools.
 
 For the underlying HTTP API (endpoints, OAuth, scopes, errors)
-**fetch the machine-readable OpenAPI 3.1 spec at <https://khdp.ai/openapi.json>**
-or browse the human-readable Redoc page at <https://khdp.ai/docs>. This
+**fetch the machine-readable OpenAPI 3.1 spec at <https://khdp.io/openapi.json>**
+or browse the human-readable Redoc page at <https://khdp.io/docs>. This
 file is about *driving the connector*.
 
 ---
@@ -63,16 +63,16 @@ Resolution order (highest first):
 # ./khdp.local.toml
 app_id   = "00000000-0000-0000-0000-000000000000"
 # api_key    = "khdp_pat_…" # optional: personal API key (Authorization: Bearer)
-api_base = "https://khdp.ai/v1"      # default; alias of khdp.net/_api
+api_base = "https://khdp.io/v1"      # default; alias of khdp.net/_api
 ```
 
 | Env var | Purpose |
 | --- | --- |
 | `KHDP_APP_ID` | registered app UUID (defaults to the official KHDP CLI app) |
-| `KHDP_PAT` | personal access token (`khdp_pat_…`). Sent as `Authorization: Bearer <pat>` (canonical) — or equivalently `X-API-Key: <pat>`; the gateway accepts either form and folds X-API-Key into Authorization before forwarding. Use X-API-Key when you want PATs to read differently from OAuth Bearer tokens in client code. **Canonical** env var |
+| `KHDP_PAT` | personal access token (`khdp_pat_…`). Sent as `Authorization: Bearer <pat>`. **Canonical** env var |
 | `KHDP_APP_SECRET` | *(advanced)* app-developer headless auth; not part of the public surface |
 | `KHDP_TOKEN` | legacy alias of `KHDP_PAT` (still recognised; `KHDP_PAT` wins if both are set) |
-| `KHDP_API_BASE` | API base (default `https://khdp.ai/v1`, an alias of `https://khdp.net/_api`) |
+| `KHDP_API_BASE` | API base (default `https://khdp.io/v1`, an alias of `https://khdp.net/_api`) |
 | `KHDP_AUTHORIZE_URL` | override the PKCE authorize URL (defaults to `https://khdp.net/external/oauth-login`) |
 | `KHDP_TOKEN_DIR` | where tokens are cached |
 | `KHDP_USE_KEYRING` | `0/false` to disable OS keychain |
@@ -120,7 +120,7 @@ After the user chooses:
   `khdp pat set <token>` for them.
 > Note: an older `khdp pat new` CLI subcommand exists that calls a
 > backend OAuth-protected issuance endpoint. It is **not part of the
-> public API surface** documented in <https://khdp.ai/openapi.json>
+> public API surface** documented in <https://khdp.io/openapi.json>
 > and may be removed in a future release. New integrations should rely
 > on web-UI-issued PATs.
 
@@ -258,8 +258,8 @@ cp -r wrappers/claude-code/skills/khdp-auth ~/.claude/skills/
 ## Calling the KHDP API
 
 Endpoint paths, payloads, scopes, and errors are described by the
-canonical **OpenAPI 3.1** spec at <https://khdp.ai/openapi.json>
-(human-readable Redoc at <https://khdp.ai/docs>). Agents should fetch
+canonical **OpenAPI 3.1** spec at <https://khdp.io/openapi.json>
+(human-readable Redoc at <https://khdp.io/docs>). Agents should fetch
 the spec once at session start — it lists every method, parameter,
 required scope, and response schema, including the `Error` shape with
 `statusCode` / `errorCode` / `message` / `requestId`. From an agent
@@ -336,8 +336,8 @@ docs/
   example.khdp.local.toml
   quickstart.{en,ko,es,zh-CN,ja}.md
 openapi/
-  v1.json           # OpenAPI 3.1 spec, served at khdp.ai/openapi.json + khdp.ai/docs
-worker/             # Cloudflare Worker fronting khdp.ai (gateway + spec hosting)
+  v1.json           # OpenAPI 3.1 spec, served at khdp.io/openapi.json + khdp.io/docs
+worker/             # Cloudflare Worker fronting khdp.io (gateway + spec hosting)
 CHANGELOG.md        # release notes
 ```
 
